@@ -1,0 +1,2819 @@
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+  - docassemble.ALToolbox:phone-number-validation.yml
+  - docassemble.ALToolbox:al_income.yml
+  - docassemble.VTSharedYMLFile:VTSharedYMLFile.yml
+---
+modules:
+  - .al_income_move
+---
+objects:
+  - all_courts: ALCourtLoader.using(file_name='docassemble.VTSharedYMLFile:data/sources/courts_list_full.xlsx')
+---
+code: |
+  trial_court_index = all_courts.matching_courts_in_county(county_name=user_selected_county,search_columns=['division_abbr'],search_string='civil')[0][0]
+---
+objects:
+  - users: ALPeopleList.using(ask_number=True,target_number=1)
+---
+
+
+############### REMOVE this code below when testing is done  ##########
+---
+#default screen parts:
+#  pre: |
+#    % if not url_args.get("hide_hud", "").lower() in ["1", "on", "true", "yes"]:
+#    `id: ${ user_info().question_id }`[BR]
+#    `Variable: ${ user_info().variable }`[BR]
+#    `Version: ${ user_info().package.replace("docassemble.", "") + " " if not user_info().package.startswith("docassemble.playground") else "" }${ package_version_number }; ${ al_version }`
+#    % endif
+---
+##########################################################################
+
+
+---
+comment: |
+  Global interview metadata
+metadata:
+  al_weaver_version: "1.7.0"
+  generated on: "2022-08-19"
+  title: >-
+    Financial Affidavit 813B
+  short title: >-
+    Form 813B
+  description: |-
+    Financial Affidavit - Property & Asset for Vermont family courts. Based on Vermont Judiciary paper form 400-813B (6/2023).
+  original_form: >-
+    https://www.vermontjudiciary.org/media/926
+  help_page_url: >-
+    https://vtlawhelp.org/cfp/fill-out-form-813b-financial-affidavit-property-and-assets
+  help_page_title: >-
+    Fill Out Form 813B - Financial Affidavit: Property and Assets
+  authors:
+    - VTCourtForms guided interview by Legal Services Vermont / VTLawHelp.org website
+    - Authored by Legal Services Vermont
+  categories:
+    - "FA-00-00-00-00"
+    - "HO-00-00-00-00"
+    - "MO-00-00-00-00"
+  typical role: "plaintiff"
+  generate download screen: True
+---
+# customized feedback form
+code: |   
+  feedback_form = "docassemble.VTFeedback:VTfeedback.yml"
+---
+code: |
+  interview_metadata['main_interview_key'] =  'VT_813B'
+---
+code: |
+  github_repo_name =  'docassemble-VT813B'
+---
+#this will correct the last-updated date that gets shown on About This Form page
+code: |
+  res = github_modified_date(github_user, "docassemble-V813B")
+  if res:
+    package_updated_on = res.format('yyyy-MM-dd')
+  else:
+    package_updated_on = None  
+---
+code: |
+  interview_short_title = "Financial Affidavit: Property and Assets"
+---
+code: |
+  al_form_type = "existing_case" 
+---
+############Code below to allow Edit my answers to be clicked in Menu or in side nav#########
+---
+reconsider: True
+code: |
+  al_menu_items_tmp = [
+    {"url": url_ask(['al_start_over_confirmation','al_start_over']),
+    "label": "Start over"
+    },
+    {
+      "url": url_ask(['al_exit_logout_confirmation', 'al_exit_logout']),
+      "label": "Exit and delete my answers"
+    },
+  ]
+  if al_enable_incomplete_downloads:
+    al_menu_items_tmp.append({
+        "url": url_action('al_error_action_download_screen'), 
+        "label": "Download current progress"
+    })
+  
+  # Answer set feature is behind a server-wide configuration option
+  if get_config('assembly line',{}).get('enable answer sets'):
+    al_menu_items_tmp.extend([
+    {"url": url_ask(["al_sessions_snapshot_label", {"recompute": ["al_sessions_save_session_snapshot"]}, "al_sessions_save_status"]),
+    "label": "Save answer set"
+    },
+    action_menu_item("Load answer set", "al_load_saved_session"),
+  ]
+  )
+  
+  if get_config('assembly line',{}).get('enable answer set imports'):
+    al_menu_items_tmp.append(
+      {"url": url_ask(["al_sessions_json_file", {"recompute": ["al_sessions_import_json"]}, "al_sessions_load_status"]),
+      "label": "Import answer set"
+      }
+    )
+  al_menu_items_tmp.append(
+    {
+      "url": url_action('edit_answers_screen'),
+      "label": "Edit my answers"
+      
+    }
+  )
+    
+  al_menu_items = al_menu_items_tmp
+  del al_menu_items_tmp
+---
+event: edit_answers_screen
+id: edit answers screen
+question: |
+  Edit your answers
+subquestion: |
+  ${ action_button_html(url_action('review_VT_813B'), label='<i class="fa-solid fa-pencil"></i> Edit your answers', color='info') }
+  
+  Remember to come back to this screen to continue.
+continue button field: VT_813B_preview_question
+---
+sections:
+  - intro: Is this tool right for you
+  - about_you: You and your household
+  - case_info: Your court case
+  - real_estate: Real Estate
+  - personal_property: Personal Property
+  - vehicles: Vehicles and Boats
+  - businesses: Business Ownership
+  - investments: Investments
+  - bank_assets: Bank Accounts and Cash
+  - accounts_held_for_benefit: ACCOUNTS/FUNDS HELD FOR YOUR OR THE OTHER PARTY'S BENEFIT
+  - sold: Transfer/Sale of Assets
+  - review_VT_fee_waiver: <i class="fa-solid fa-pencil"></i> <u>Edit your answers</u>
+  - sign: Sign your document
+  - get_docs: Download your document
+progressive: False
+---
+###This adds the signature feature to the interview###
+code: |
+  signature_fields = ['users[0].signature']
+---
+#################### INTERVIEW ORDER #####################
+---
+comment: |
+  Controls order and branching logic for questions specific to this form
+id: interview_order_VT_fee_waiver
+code: |
+  
+  # Below sets the user_role by asking a question.
+  # You can set user_role directly instead to either 'plaintiff' or 'defendant'
+  nav.set_section('intro')
+
+  VT_fee_waiver_intro
+  set_progress(5)
+  important_notes_to_user
+  
+  users.gather()
+  users[0].address.address
+  users[0].daytime_phone_number
+  users[0].email
+  users[0].birthdate
+  
+  nav.set_section('other_party')
+  set_progress(15)
+  #collect other party info
+  other_parties[0].name.first
+  other_parties[0].birthdate
+    
+  nav.set_section('case_info')
+  set_progress(30)
+  user_ask_role
+  case_name
+  docket_number
+  
+  #This is where we collect the desired court division and county. With those two pieces of info and our comprehensive courts_list_full spreadsheet, the exact court is determined. We also allow the user to say they don't know.
+  user_selected_county
+  trial_court.address.county
+  
+  
+  nav.set_section('real_estate')
+  set_progress(30)
+  
+  real_estate.user_owned
+  real_estate.other_party_owned
+  if len(real_estate) > 0:
+    real_estate.review_items
+        
+  nav.set_section('personal_property')
+  set_progress(35)
+  
+  if len(personal_property) > 0:
+    personal_property.review_items
+  personal_property.user_owned
+  personal_property.other_party_owned
+        
+  nav.set_section('vehicles')
+  set_progress(40)
+  if len(vehicles) > 0:
+    vehicles.review_items
+  vehicles.user_owned
+  vehicles.other_party_owned
+  
+  nav.set_section('businesses')
+  set_progress(45)
+  if len(businesses) > 0:
+    businesses.review_items
+  businesses.user_owned
+  businesses.other_party_owned
+  
+  nav.set_section('investments')
+  set_progress(45)
+  if len(investments) > 0:
+    investments.review_items
+  investments.user_owned
+  investments.other_party_owned
+        
+  nav.set_section('bank_assets')
+  set_progress(50)
+  if len(bank_assets) > 0:
+    bank_assets.review_items
+  bank_assets.user_owned
+  bank_assets.other_party_owned
+  
+  nav.set_section('accounts_held_for_benefit')
+  set_progress(55)
+  if len(accounts_held_for_benefit) > 0:
+    accounts_held_for_benefit.review_items    
+
+  nav.set_section('life_insurance')
+  set_progress(60)
+  if len(life_insurance) > 0:
+    life_insurance.review_items    
+  life_insurance.user_owned
+  life_insurance.other_party_owned
+
+  nav.set_section('retirement_accounts')
+  set_progress(65)
+  if len(retirement_accounts) > 0:
+    retirement_accounts.review_items
+  retirement_accounts.user_owned
+  retirement_accounts.other_party_owned
+
+  nav.set_section('pensions')
+  set_progress(70)
+  if len(pensions) > 0:
+    pensions.review_items
+  pensions.user_owned
+  pensions.other_party_owned
+  
+  nav.set_section('sold')
+  if sold_or_transferred_asset or withdrew_extra_funds:
+    explain_transfer_or_withdrawal
+    
+  set_progress(85)
+  interview_order_VT_fee_waiver = True
+
+---
+###################### MAIN INTERVIEW ORDER ######################
+comment: |
+  This block includes the logic for standalone interviews.
+  Delete mandatory: True to include in another interview
+mandatory: True
+code: |
+  al_intro_screen
+  interview_order_VT_fee_waiver
+  nav.set_section("review_VT_fee_waiver")
+  trial_court.address.county
+  VT_fee_waiver_preview_question
+  set_progress(92)
+  nav.set_section('sign')
+  signature_date
+  set_progress(95)
+  al_form_requires_digital_signature = False
+  basic_questions_signature_flow
+  
+    # Store anonymous data for analytics / statistics
+  store_variables_snapshot(
+      persistent=True,
+      data={
+          "zip": showifdef("users[0].address.zip"),
+          "county_where_filing": showifdef("trial_court.address.county"),
+          "court_division_where_filing": showifdef("trial_court.division_abbr"),
+          "gets_public_benefits": public_benefits.number_gathered() > 0,
+          "employed": showifdef("employed"),
+          "reached_interview_end": True,
+          "num_forms": len(al_user_bundle.enabled_documents()),
+      },
+  )
+  nav.set_section('get_docs')
+  set_progress(100)
+  VT_fee_waiver_download
+---
+############################### INTRO SCREENS ###############################
+---
+id: basic questions intro screen
+decoration: form-lineal
+question: |
+  ${interview_short_title}
+subquestion: |  
+
+  <p>${ intro_vtcourtforms_3_steps }</p>
+  
+  <i class="fas fa-file-text fa-2x"></i> This tool will produce a completed Application to Waive Filing Fees and Service Costs for Vermont courts — form 600-00228. If approved by the Vermont Judiciary, you will not have to pay court fees.
+  
+    <i class="fas fa-clock fa-2x"></i>  It may take you between 10 and 40 minutes to complete this. If you want, you can create an account and save your work to return to later.
+
+  <i class="fas fa-circle-info fa-2x"></i> It is free to use this tool. This site is not a lawyer.
+  
+  Visit the [VTLawHelp.org website](https://vtlawhelp.org) for information about civil legal issues.
+
+  <p>${ intro_vtcourtforms_created_by }</p>
+
+continue button field: al_intro_screen
+---
+id: VT fee waiver intro
+continue button field: VT_fee_waiver_intro
+question: |
+  Is this tool right for you?
+subquestion: | 
+  ${ start_accordion('<h2 class="h5">Do you need this fee waiver form?</h2>') }
+  <p>Before you begin, check to be sure you actually need to pay a court filing fee.</p>
+  
+  <p>When you ask the court for a Relief from Abuse (RFA) order, there are no court fees. It is free. Here is the full list of forms that have no filing fee:</p>
+  
+  <ul><li>Request for Relief from Abuse</li>
+  <li>Request for Abuse Prevention for a Vulnerable Adult</li>
+  <li>Request for Order Against Stalking</li>
+  <li>Request for Order Against Sexual Assault</li>
+  <li>Request for Extreme Risk Protection Order</li>
+  <li>Abusive Litigation</li></ul>
+  <p>You do not pay a fee to file an "answer" in a court case. However, there is a fee to file a "counterclaim" in some cases (such as eviction or small claims), but not others (such as divorce or parentage).</p>
+
+  ${ next_accordion('<h2 class="h5">Who can get their fees waived?</h2>') }
+  The Vermont Judiciary says the court can waive your filing fee and service costs if:
+  
+  <ul><li>you get any kind of public assistance, or</li>
+  <li>your gross income is at or below <a href="https://www.vtlawhelp.org/150-federal-poverty-level-fpl">150% of the federal poverty guidelines,</a> or</li>
+  <li>the court finds you can't pay the fee without expending resources needed to support you and your dependents.</li></ul>
+
+  ${ next_accordion('<h2 class="h5">Information you will need</h2>') }
+  <ul><li>the name and address of any employer you might have</li>
+  <li>any public assistance that you get (like 3SquaresVT food help, ReachUp help for families, SSI, etc.) and the amount, and</li>
+  <li>information about the court case for which you want a fee waiver. (You can find this information on other court papers you have about this case. If you are starting a court action — like filing for divorce — you won't have a case number or docket number yet.)</li></ul>
+  
+  <p>If you get public assistance, that's all you need. <strong>If you don't get public assistance</strong>, you will also need to know:</p>
+  
+  <ul><li>your income — If you work or get unemployment, have those paystubs on hand. If you get child support, have that information on hand. If you are self-employed, have your IRS Schedule C on hand or have your income and business expenses from the last 12 months.
+  <li>your expenses (like rent, utilities, insurance payments, child care, etc.) — looking back over the last 12 months
+  <li>the amount of money you have in the bank and on hand
+  <li>the approximate value of your vehicle/car, real estate/home, and any other major things you might own, and
+  <li>if filling out form on behalf of a minor or incompetent adult, you need that person’s information.</ul>
+  ${ next_accordion('<h2 class="h5">Where to learn more</h2>') }
+  <p>Visit the Vermont Judiciary website to learn more about <a href="https://www.vermontjudiciary.org/fees">filing and service fees</a> and <a href="https://www.vermontjudiciary.org/fees"https://www.vermontjudiciary.org/self-help/application-waive-filing-fees-and-service-costs>asking to file court papers for free in Vermont.</a></p>
+
+  <p>Ask for general help with court forms or the court process by contacting the <a href="https://www.vermontjudiciary.org/self-help/ARC">Vermont Judiciary Access and Resource Center.</a> Their services are free and they serve the whole state. They do NOT give legal advice.</p>
+
+  ${ end_accordion() }
+
+  <h4>Our terms of use</h4>
+fields:
+  - To continue, please accept our [terms of use](https://vtlawhelp.org/vtcourtforms/terms-of-use).: acknowledged_information_use
+    datatype: checkboxes
+    none of the above: False    
+    minlength: 1
+    choices:
+      - I accept the terms of use.
+    validation messages:
+      minlength: |
+        You cannot continue unless you agree to the terms of use.
+---
+id: important_notes_to_user
+question: |
+  Important
+subquestion: |  
+  <i class="fa fa-exclamation-circle fa-2x"></i>  This tool does **not** file your fee waiver form with the court. You will need to get it to the court yourself such as by email, mail or in person. We will give you instructions when you finish the form.
+  
+  This tool **cannot** tell you if you qualify for sure. The court clerk will consider all of the information you provide.
+    
+    Let's get started. Tap the Next button.
+continue button field: important_notes_to_user
+---
+############################### ABOUT COURT CASE ###############################
+---
+id: users names
+sets:
+  - users[i].name.first
+  - users[i].name.last
+  - users[i].name.middle
+  - users[i].name.suffix    
+question: |
+  % if i == 0 and al_person_answering == "user":
+  What is your name?
+  % else:
+  % if al_form_type in ['starts_case','existing_case','appeal']:
+  Who is the ${ ordinal(i) } person on your side of the case?
+  % else:
+  What is the name of the ${ ordinal_number(i) } person who is adding their name to
+  this form with you?
+  % endif
+  % endif
+fields:
+  - code: |
+      users[i].name_fields()
+  - note: |
+      ${ collapse_template(asterisk) }
+---
+sets:
+  - other_parties[0].name.first
+  - other_parties[0].name.last
+  - other_parties[0].name.middle
+  - other_parties[0].name.suffix
+id: names of opposing parties
+question: |
+  Name of the other party
+fields:
+  - code: |
+      other_parties[0].name_fields(person_or_business='person')
+  - Date of birth: other_parties[0].birthdate
+    datatype: BirthDate
+---
+id: court case information
+question: |
+  What is the name of the court case you are involved in?
+subquestion: |
+  Example: Joanna Kramer vs. Ted Kramer
+  
+  The plaintiff is listed first, then the defendant.
+fields:
+  - "Case name, as seen on your court papers": case_name
+    maxlength: 80
+  - note: |
+      **Note**: If you are starting a case, you are the plaintiff. Type in your first and last name "vs." the first and last name of the other party / defendant(s).
+      
+      If you are a defendant in a case, type in the plaintiff's first and last name(s) "vs." your first and last name. If you are filing a counterclaim, you remain the defendant. Use the plaintiff and defendant names as seen on the original court papers you got.
+---
+id: choose a court county
+question: |
+  What county is your case in?
+fields:
+  - note: |
+      Choose the county where you will file this form.
+
+  - County: user_selected_county
+    code: sorted(all_courts.unique_column_values('branch') - {"Environmental", "Judicial Bureau"} )
+  
+  - note: |
+      ${ collapse_template(which_county_to_choose) }
+      ${ collapse_template(in_which_county) }
+---
+############################### USERS INFO ###############################
+---
+id: Gather users street address
+sets:
+  - users[0].address.address
+  - users[0].address.city
+  - users[0].address.zip
+  - users[0].address.unit
+  - users[0].address.state
+question: |
+  What is your address?
+  
+fields:
+  - code: |
+      users[0].address_fields(default_state=AL_DEFAULT_STATE)
+  - I have a mailing address that is different from my street address: users1_mailing_address_different
+    datatype: yesno
+  - Mailing address: users[0].mailing_address.address
+    address autocomplete: True
+    show if: users1_mailing_address_different
+  - Unit: users[0].mailing_address.unit
+    required: False
+    show if: users1_mailing_address_different
+  - City: users[0].mailing_address.city
+    show if: users1_mailing_address_different
+  - State: users[0].mailing_address.state
+    code: |
+      states_list()
+    default: VT
+    show if: users1_mailing_address_different
+  - Zip or postal code: users[0].mailing_address.zip
+    required: False
+    show if: users1_mailing_address_different
+
+---
+id: your contact information
+question: |
+  What is your contact information?
+subquestion: |
+  How can the court reach you other than by mail?
+
+  If you do not have a phone number or email, you can use a trusted friend's phone number. But the friend must be someone you can rely on to give you a message.
+
+fields:  
+  - Daytime phone number: users[0].daytime_phone_number
+    datatype: al_international_phone
+    required: False
+  - Evening phone number: users[0].evening_phone_number
+    datatype: al_international_phone
+    required: False
+  - Email address: users[0].email    
+    datatype: email
+    required: False
+---
+continue button field: users.revisit
+question: |
+  Edit info about you
+subquestion: |
+  ${ users.table }
+
+  ${ users.add_action() }
+---
+table: users.table
+rows: users
+columns:
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+  - Address: |
+      row_item.address.block() if defined("row_item.address.address") else ""
+  - Mailing address: |
+      row_item.mailing_address.block() if defined("row_item.mailing_address.address") else ""
+  - Email: |
+      row_item.email if defined("row_item.email") else ""
+  - Phone number: |
+      row_item.daytime_phone_number if defined("row_item.daytime_phone_number") else ""
+  - Signature: |
+      row_item.signature if defined("row_item.signature") else ""
+edit:
+  - name.first
+  - address.address
+  - email
+  - daytime_phone_number
+  - signature
+confirm: True
+---
+################ VEHICLES CARS TRUCKS ################
+---
+variable name: vehicles.terms_ordered
+data: !!omap
+  - car: "Car"
+  - truck: "Truck"
+  - motorcycle: "Motorcycle"
+  - boat: "Boat or jetski"
+  - snowmobile: "Snowmobile"
+  - ATV: "ATV"
+  - camper: "Camper"
+  - RV: "RV"
+  - plane: "Plane"
+  - other: "Other"
+---
+comment: |
+  used in this display line
+  About your ___
+code: |
+  vehicles_other_display = "other vehicle"
+---
+objects:
+  - vehicles: ALVehicleList.using(complete_attribute='complete',there_is_another=False)
+---
+objects:
+  - vehicles_ordered: DAOrderedDict.using(elements=vehicles.terms_ordered, auto_gather=False, gathered=True)
+---
+id: vehicles there are any
+generic object: ALVehicleList
+code: |
+  if x.selected_types.any_true():
+    x.move_checks_to_list(selected_terms=x.terms_ordered)
+    x.there_are_any = True
+  else:
+    x.there_are_any = False
+---
+id: are there vehicles
+#vehicles
+question: |
+  Do you have any cars, trucks or other vehicles?
+subquestion: |
+   Check any that apply to you.
+fields:
+  - no label: vehicles.selected_types
+    datatype: checkboxes
+    code: |
+      vehicles_ordered
+---
+id: vehicles complete
+generic object: ALVehicleList
+code: |
+  x[i].market_value
+  x[i].complete = True
+---
+id: info for each vehicle
+reconsider: vehicles[i].display_name
+question: |
+  About your ${ vehicles[i].display_name.lower() }
+subquestion: |
+  Make your best guess when answering these questions.
+fields:
+  - Type of vehicle: vehicles[i].source
+    code: |
+      vehicles_ordered
+  - Other (explain): vehicles[i].source_other
+    show if:
+      variable: vehicles[i].source
+      is: other
+  - Title holder: vehicles[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - What make / manufacturer? (Examples - Honda or Ford): vehicles[i].make
+  - What model? (Examples - Civic or F-150): vehicles[i].model
+    maxlength: 20
+  - What year?: vehicles[i].year
+  - What is its market value? How much would you get if you sold it?: vehicles[i].market_value
+    datatype: currency
+  - If you have a loan or owe money on the ${ vehicles[i].source }, how much do you owe? Enter 0 if you own it outright.: vehicles[i].amount_owed
+    datatype: currency
+  - note: |
+      ${ collapse_template(vehicle_value) }
+validation code: |
+  if vehicles[i].source != "other":
+    vehicles[i].display_name = vehicles.terms_ordered.get(vehicles[i].source, vehicles[i].source)
+  else:
+    vehicles[i].display_name = vehicles[i].source_other
+---
+code: |
+  if defined('vehicles[i].source') and vehicles[i].source != "other":
+    vehicles[i].display_name = vehicles.terms_ordered.get(vehicles[i].source, vehicles[i].source)
+  elif defined('vehicles[i].source') and vehicles[i].source == "other" and defined('vehicles[i].source_other'):
+    vehicles[i].display_name = vehicles[i].source_other
+  else:
+    vehicles[i].display_name = vehicles_other_display
+---
+id: want to add more vehicles
+question: Do you want to list any more vehicles?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ vehicles_table }
+  
+  ${ vehicles.add_action() }
+continue button field: vehicles.review_items
+---
+continue button field: vehicles.revisit
+question: |
+  Edit vehicles
+subquestion: |
+  ${ vehicles_table }
+
+  ${ vehicles.add_action() }
+---
+table: vehicles_table
+rows: vehicles
+columns:
+  - Description: |
+      row_item.year_make_model() if defined("row_item.year_make_model()") else ""
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+  - Amount owed: |
+      currency(row_item.amount_owed) if defined("row_item.amount_owed") else ""
+edit:
+  - make
+  - model
+  - year
+  - market_value
+---
+id: selected types sets there_are_any
+generic object: ALIncomeList
+code: |
+  if x.selected_types.any_true():
+    x.move_checks_to_list(selected_terms=x.terms_ordered)
+    x.there_are_any = True
+  else:
+    x.there_are_any = False
+---
+id: calculates if user owns any in a list
+generic object: ALIncomeList
+code: |
+  temp_value = False
+  for item in x:
+    if str(users[0].name) in item.owner:
+      temp_value = True
+  x.user_owned = temp_value
+---
+id: calculates if user owns any in a list
+generic object: ALIncomeList
+code: |
+  temp_value = False
+  for item in x:
+    if str(other_parties[0].name) in item.owner:
+      temp_value = True
+  x.other_party_owned = temp_value
+---
+id: calculates if user owns any in personal property
+code: |
+  temp_value_user = False
+  temp_value_other_party = False
+  for item in personal_property:
+    if item.in_users_possession:
+      temp_value_user = True
+    else:
+      temp_value_other_party = True
+  personal_property.user_owned = temp_value_user
+  personal_property.other_party_owned = temp_value_other_party
+---
+################ REAL ESTATE ################
+---
+id: real estate user or other party owned
+question: Real estate
+fields:
+  - Do you own real estate either indiviudally or jointly with another?:  real_estate.user_owned
+    datatype: yesnoradio
+  - Does ${ other_parties[0].name } own real estate individually or jointly with another?: real_estate.other_party_owned
+    datatype: yesnoradio
+---
+id: real_estate terms_ordered
+variable name: real_estate.terms_ordered
+data: !!omap
+  - primary residence: "Primary residence (where you live)"
+  - mobile home: "Mobile home"
+  - second home: "Second home"
+  - camp: "Camp"
+  - timeshare: "Timeshare"
+  - land: "Unimproved land"
+  - rental: "Residential rental property you own"
+  - commercial: "Commercial real estate"
+  - other: "Other real estate"
+---
+id: real_estate other display
+comment: |
+  This keeps the text that may be changed near the top of the public benefits section.
+  Used in:
+  Tell us about your ______
+code: |
+  real_estate_other_display = "other real estate"
+---
+id: real_estate object
+objects:
+  - real_estate: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: real_estate ordered object for checkboxes
+objects:
+  - real_estate_ordered: DAOrderedDict.using(elements=real_estate.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  This uses id: ALIncomeList there are any because  An ALAssetList is an ALIncomeList, but there may be a generic ALAssetList for there_are_any that would take precedence
+---
+id: is there real estate
+#real_estate
+question: |
+  Do you have any real estate?
+subquestion: |
+   For example, do you own your home?
+   
+   Check any that apply to you.
+fields:
+  - no label: real_estate.selected_types
+    datatype: checkboxes
+    code: |
+      real_estate_ordered
+---
+code: |
+  real_estate[i].market_value
+  real_estate[i].complete = True
+---
+id: info for each real estate
+reconsider: real_estate[i].display_name
+question: |
+  Tell us about your ${ real_estate[i].display_name.lower() }
+subquestion: |
+  Make your best guess for the market value.
+
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(item.display_name for item in real_estate.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(item.display_name for item in real_estate.complete_elements()) }.
+  % endif
+fields:
+  - Type of real estate: real_estate[i].source
+    code: |
+      real_estate_ordered
+  - Other (explain): real_estate[i].source_other
+    show if:
+      variable: real_estate[i].source
+      is: other
+  - Description of property including location: real_estate[i].description
+  - What is its market value? How much would you get if you sold it?: real_estate[i].market_value
+    datatype: currency
+  - If you have a mortgage lien or owe money on the real estate how much do you owe? Enter 0 if you own it outright: real_estate[i].balance
+    datatype: currency
+validation code: |
+  if real_estate[i].source != "other":
+    real_estate[i].display_name = real_estate.terms_ordered.get(real_estate[i].source, real_estate[i].source)
+  else:
+    real_estate[i].display_name = real_estate[i].source_other
+---
+id: real_estate set display name
+code: |
+  if defined('real_estate[i].source') and real_estate[i].source != "other":
+    real_estate[i].display_name = real_estate.terms_ordered.get(real_estate[i].source, real_estate[i].source)
+  elif defined('real_estate[i].source') and real_estate[i].source == "other" and defined('real_estate[i].source_other'):
+    real_estate[i].display_name = real_estate[i].source_other
+  else:
+    real_estate[i].display_name = real_estate_other_display
+---
+id: want to add more real estate
+question: Do you want to list any more real estate?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ real_estate_table }
+  
+  ${ real_estate.add_action() }
+continue button field: real_estate.review_items
+---
+id: real_estate revisit
+continue button field: real_estate.revisit
+question: |
+  Edit real estate
+subquestion: |
+  ${ real_estate_table }
+
+  ${ real_estate.add_action() }
+---
+id: real_estate table
+table: real_estate_table
+rows: real_estate
+columns:
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+  - Amount owed: |
+      currency(row_item.balance) if defined("row_item.balance") else ""
+edit:
+  - source
+  - market_value
+---
+###############BANK ASSETS####################
+---
+id: bank_assets terms_ordered
+variable name: bank_assets.terms_ordered
+data: !!omap
+  - checking account: "Checking accounts"
+  - savings account: "Savings accounts"
+  - money_market: "Money market accounts"
+  - cash on hand: "Cash on hand"
+  - college savings: "Tax Exempt College Funds or Other College Savings accounts"
+  - health savings: "Health Savings Accounts"
+  - other: "Other accounts"
+---
+id: bank_assets object
+objects:
+  - bank_assets: ALAssetList.using(complete_attribute='balance',there_is_another=False)
+---
+id: bank_assets ordered object for checkboxes
+objects:
+  - bank_assets_ordered: DAOrderedDict.using(elements=bank_assets.terms_ordered, auto_gather=False, gathered=True)
+---
+id: are there bank assets
+#bank_assets
+question: |
+  Do you have money on hand or in the bank?
+subquestion: |
+   Check any that apply to you.
+fields:
+  - no label: bank_assets.selected_types
+    datatype: checkboxes
+    code: |
+      bank_assets_ordered
+---
+id: info for each bank asset
+question: |
+  About your cash and bank assets
+fields:
+  - Source: bank_assets[i].source
+    input type: dropdown
+    code: |
+      bank_assets_ordered
+  - Owner: bank_assets[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Bank: bank_assets[i].bank
+  - Current balance: bank_assets[i].balance
+    datatype: currency
+    required: False
+---
+id: bank assets display names
+code: |
+  bank_assets[i].display_name = bank_assets.terms_ordered.get(bank_assets[i].source, bank_assets[i].source)
+---
+id: want to add more bank assets
+question: Do you want to list any more cash or bank assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ bank_assets_table }
+  
+  ${ bank_assets.add_action() }
+continue button field: bank_assets.review_items
+---
+id: bank_assets revisit
+continue button field: bank_assets.revisit
+question: |
+  Edit bank accounts and cash
+subquestion: |
+  ${ bank_assets_table }
+
+  ${ bank_assets.add_action() }
+---
+id: bank_assets table
+table: bank_assets_table
+rows: bank_assets
+columns:
+  - Owner: row_item.owner
+  - Source: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Bank: row_item.bank
+  - Balance: |
+      currency(row_item.balance) if defined("row_item.balance") else ""
+edit:
+  - source
+  - balance
+---
+
+comment: |
+  ################ {{ list }} asset list template ################
+  ---
+  id: {{ list }} terms_ordered
+  # "!!omap" makes these terms ordered
+  # their order here will be their same order when shown to users.
+  variable name: {{ list }}.terms_ordered
+  data: !!omap
+    - tools: "Tools"
+    - equipment: "Equipment"
+    - electronics: "Electronics"
+    - stocks: "Stocks"
+    - bonds: "Bonds"
+    - other: "Other"
+  ---
+  id: {{ list }} other display
+  comment: |
+    This keeps the text that may be changed near the top of the section.
+    Used in:
+    Tell us about your ______
+  code: |
+    {{ list }}_other_display = "other asset"
+  ---
+  id: {{ list }} object
+  objects:
+    - {{ list }}: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+  ---
+  id: {{ list }} ordered object for checkboxes
+  objects:
+    - {{ list }}_ordered: DAOrderedDict.using(elements={{ list }}.terms_ordered, auto_gather=False, gathered=True)
+  ---
+  comment: |
+    will use id: ALIncomeList there are any
+  ---
+  id: other assets
+  question: |
+    Other large assets that you have not entered already
+  subquestion: |   
+    Check any that apply to you.
+    
+    Note: Do **not** include retirement accounts.
+  fields:
+    - no label: {{ list }}.selected_types
+      datatype: checkboxes
+      code: |
+        {{ list }}_ordered
+  ---
+  id: {{ list }} complete
+  code: |
+    {{ list }}[i].market_value
+    {{ list }}[i].complete = True
+  ---
+  id: describe other asset
+  reconsider: {{ list }}[i].display_name
+  question: |
+    Tell us about your ${ {{ list }}[i].display_name }
+  subquestion: |
+  
+    Make your best guess for the market value.
+    
+    % if i > 1:
+    You have already told us about your ${ comma_and_list(asset.display_name for asset in {{ list }}.complete_elements()) }.
+    % elif i > 0:
+    You have already told us about your ${ comma_and_list(asset.display_name for asset in {{ list }}.complete_elements()) }.
+    % endif
+  fields:
+    - Type of asset: {{ list }}[i].source
+      code: |
+        {{ list }}_ordered
+    - Other (explain): {{ list }}[i].source_other
+      show if:
+        variable: {{ list }}[i].source
+        is: other
+    - What is its market value? How much would you get if you sold it?: {{ list }}[i].market_value
+      maxlength: 76
+      datatype: currency
+  validation code: |
+    if {{ list }}[i].source != "other":
+      {{ list }}[i].display_name = {{ list }}.terms_ordered.get({{ list }}[i].source, {{ list }}[i].source)
+    else:
+      {{ list }}[i].display_name = {{ list }}[i].source_other
+  ---
+  id: {{ list }} set display name
+  code: |
+    if defined('{{ list }}[i].source') and {{ list }}[i].source != "other":
+      {{ list }}[i].display_name = {{ list }}.terms_ordered.get({{ list }}[i].source, {{ list }}[i].source)
+    elif defined('{{ list }}[i].source') and {{ list }}[i].source == "other" and defined('{{ list }}[i].source_other'):
+      {{ list }}[i].display_name = {{ list }}[i].source_other
+    else:
+      {{ list }}[i].display_name = {{ list }}_other_display
+  ---
+  id: want to add more other assets
+  question: Do you want to list any more other assets?
+  subquestion: |
+    Tap Next if you don't have more to add.
+    
+    ${ {{ list }}_table }
+    
+    ${ {{ list }}.add_action() }
+  continue button field: {{ list }}.review_items
+  ---
+  id: other assets revisit
+  continue button field: {{ list }}.revisit
+  question: |
+    Edit other assets
+  subquestion: |
+    ${ {{ list }}_table }
+  
+    ${ {{ list }}.add_action() }
+  ---
+  table: {{ list }}_table
+  rows: {{ list }}
+  columns:
+    - Description: |
+        row_item.display_name if defined("row_item.source") else ""
+    - Market value: |
+        currency(row_item.market_value) if defined("row_item.market_value") else ""
+  edit:
+    - source
+    - market_value
+    - balance
+
+---
+### accounts_held_for_benefit ###
+id: accounts_held_for_benefit terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name:  accounts_held_for_benefit.terms_ordered
+data: !!omap
+  - held_for_user_benefit: "Accounts or funds held for your own benefit"
+  - held_for_OP_benefit: "Accounts or funds held for other party's benefit"
+  - other: "Other"
+---
+id:  accounts_held_for_benefit other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+   accounts_held_for_benefit_other_display = "other asset"
+---
+id:  accounts_held_for_benefit object
+objects:
+  -  accounts_held_for_benefit: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id:  accounts_held_for_benefit ordered object for checkboxes
+objects:
+  -  accounts_held_for_benefit_ordered: DAOrderedDict.using(elements= accounts_held_for_benefit.terms_ordered, auto_gather=False, gathered=True)
+---
+question: |
+  Are there any accounts/funds held for your benefit or the other party?
+fields:
+  - Are there any accounts/funds held for your benefit or the other party?: accounts_held_for_benefit.there_are_any
+    datatype: yesnoradio
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label:  accounts_held_for_benefit.selected_types
+    datatype: checkboxes
+    code: |
+       accounts_held_for_benefit_ordered
+---
+id:  accounts_held_for_benefit complete
+code: |
+   accounts_held_for_benefit[i].market_value
+   accounts_held_for_benefit[i].complete = True
+---
+id: describe other asset
+question: |
+  Tell us about your ${ ordinal(i) } account.
+subquestion: |
+
+  Make your best guess for the market value.
+  
+
+fields:
+  - Trustee or Holder: accounts_held_for_benefit[i].trustee
+  - Name of Beneficiary: accounts_held_for_benefit[i].beneficiary
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Type of asset:  accounts_held_for_benefit[i].description
+  - What is its market value? How much would you get if you sold it?:  accounts_held_for_benefit[i].market_value
+    maxlength: 76
+    datatype: currency
+
+---
+id:  accounts_held_for_benefit set display name
+code: |
+  if defined(' accounts_held_for_benefit[i].source') and  accounts_held_for_benefit[i].source != "other":
+     accounts_held_for_benefit[i].display_name =  accounts_held_for_benefit.terms_ordered.get( accounts_held_for_benefit[i].source,  accounts_held_for_benefit[i].source)
+  elif defined(' accounts_held_for_benefit[i].source') and  accounts_held_for_benefit[i].source == "other" and defined(' accounts_held_for_benefit[i].source_other'):
+     accounts_held_for_benefit[i].display_name =  accounts_held_for_benefit[i].source_other
+  else:
+     accounts_held_for_benefit[i].display_name =  accounts_held_for_benefit_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${  accounts_held_for_benefit_table }
+  
+  ${  accounts_held_for_benefit.add_action() }
+continue button field:  accounts_held_for_benefit.review_items
+---
+id: other assets revisit
+continue button field:  accounts_held_for_benefit.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${  accounts_held_for_benefit_table }
+
+  ${  accounts_held_for_benefit.add_action() }
+---
+table:  accounts_held_for_benefit_table
+rows:  accounts_held_for_benefit
+columns:
+  - Trustee or Holder: row_item.trustee
+  - Name of Beneficiary: row_item.beneficiary
+  - Type of asset:  row_item.description
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+---
+### businesses ###
+id: businesses terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: businesses.terms_ordered
+data: !!omap
+  - sole_proprietor: "Sole proprietor"
+  - Partnership: "Partnership"
+  - llc: "LLC / Limited Liability Corporation"
+  - corporation: "Corporation"
+  - s_corporation: "S-Corporation"
+  - other: "Other"
+
+---
+id: businesses other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  businesses_other_display = "other asset"
+---
+id: businesses object
+objects:
+  - businesses: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: businesses ordered object for checkboxes
+objects:
+  - businesses_ordered: DAOrderedDict.using(elements=businesses.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  will use id: ALIncomeList there are any
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: businesses.selected_types
+    datatype: checkboxes
+    code: |
+      businesses_ordered
+---
+id: businesses there are any
+question: |
+  Do you own a percentage of any businesses?
+fields:
+  - Do you own any businesses?: businesses.there_are_any
+    datatype: yesnoradio
+  
+---
+id: businesses complete
+code: |
+  businesses[i].market_value
+  businesses[i].complete = True
+---
+id: describe other asset
+reconsider: businesses[i].display_name
+question: |
+  Tell us about your ${ ordinal(i) } business
+subquestion: |
+
+  Make your best guess for the market value.
+  
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in businesses.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in businesses.complete_elements()) }.
+  % endif
+fields:
+  - Owner: businesses[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Name of Business: businesses[i].name
+  - Type of Business Activity: businesses[i].type
+  - Legal Structure of Business: businesses[i].source
+    code: |
+      businesses_ordered
+  - Other (explain): businesses[i].source_other
+    show if:
+      variable: businesses[i].source
+      is: other
+  - Percentage of Interest Owned: businesses[i].percent_owned
+    datatype: number
+    min: 0
+    max: 100
+  - Fair Market Value: businesses[i].market_value
+    maxlength: 76
+    datatype: currency
+  - Date of Last Valuation: businesses[i].valuation_date
+    datatype: date
+validation code: |
+  if businesses[i].source != "other":
+    businesses[i].display_name = businesses[i].name + ", " + businesses[i].type + ", " + businesses.terms_ordered.get(businesses[i].source, businesses[i].source)
+  else:
+    businesses[i].display_name = businesses[i].name + ", " + businesses[i].type + ", " + businesses[i].source_other
+---
+id: businesses set display name
+code: |
+  if defined('businesses[i].source') and businesses[i].source != "other":
+    businesses[i].display_name = businesses.terms_ordered.get(businesses[i].source, businesses[i].source)
+  elif defined('businesses[i].source') and businesses[i].source == "other" and defined('businesses[i].source_other'):
+    businesses[i].display_name = businesses[i].source_other
+  else:
+    businesses[i].display_name = businesses_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ businesses_table }
+  
+  ${ businesses.add_action() }
+continue button field: businesses.review_items
+---
+id: other assets revisit
+continue button field: businesses.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ businesses_table }
+
+  ${ businesses.add_action() }
+---
+table: businesses_table
+rows: businesses
+columns:
+  - Owner: |
+      row_item.owner
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Percentage of Interest Owned: row_item.percent_owned
+  - Date of Last Valuation: row_item.valuation_date
+  - Fair market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+---
+---
+### investments ###
+id: investments terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: investments.terms_ordered
+data: !!omap
+  - stocks: "Stocks"
+  - bonds: "Bonds"
+  - annuities: "Annuities"
+  - mutual: "Mutual funds"
+  - trusts: "Trusts"
+  - other: "Other"
+---
+id: investments other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  investments_other_display = "other asset"
+---
+id: investments object
+objects:
+  - investments: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: investments ordered object for checkboxes
+objects:
+  - investments_ordered: DAOrderedDict.using(elements=investments.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  will use id: ALIncomeList there are any
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: investments.selected_types
+    datatype: checkboxes
+    code: |
+      investments_ordered
+---
+id: investments complete
+code: |
+  investments[i].market_value
+  investments[i].complete = True
+---
+id: describe other asset
+reconsider: investments[i].display_name
+question: |
+  Tell us about your ${ investments[i].display_name }
+subquestion: |
+
+  Make your best guess for the market value.
+  
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in investments.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in investments.complete_elements()) }.
+  % endif
+fields:
+  - Owner: investments[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Type of asset: investments[i].source
+    code: |
+      investments_ordered
+  - Other (explain): investments[i].source_other
+    show if:
+      variable: investments[i].source
+      is: other
+  - Description (Name of company, fund, bank, trust and trustee etc): investments[i].description
+  - Number of shares: investments[i].shares
+    datatype: number
+  - What is its market value? How much would you get if you sold it?: investments[i].market_value
+    maxlength: 76
+    datatype: currency
+validation code: |
+  if investments[i].source != "other":
+    investments[i].display_name = investments.terms_ordered.get(investments[i].source, investments[i].source)
+  else:
+    investments[i].display_name = investments[i].source_other
+---
+id: investments set display name
+code: |
+  if defined('investments[i].source') and investments[i].source != "other":
+    investments[i].display_name = investments.terms_ordered.get(investments[i].source, investments[i].source)
+  elif defined('investments[i].source') and investments[i].source == "other" and defined('investments[i].source_other'):
+    investments[i].display_name = investments[i].source_other
+  else:
+    investments[i].display_name = investments_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ investments_table }
+  
+  ${ investments.add_action() }
+continue button field: investments.review_items
+---
+id: other assets revisit
+continue button field: investments.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ investments_table }
+
+  ${ investments.add_action() }
+---
+table: investments_table
+rows: investments
+columns:
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+  - balance
+---
+---
+### life_insurance ###
+id: life_insurance terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: life_insurance.terms_ordered
+data: !!omap
+  - user_is_insured: "You are insured"
+  - OP_is_insured: "The other party is insured"
+  - other: "Other"
+---
+id: life_insurance other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  life_insurance_other_display = "other asset"
+---
+id: life_insurance object
+objects:
+  - life_insurance: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: life_insurance ordered object for checkboxes
+objects:
+  - life_insurance_ordered: DAOrderedDict.using(elements=life_insurance.terms_ordered, auto_gather=False, gathered=True)
+---
+id: life insurance there are any
+question: |
+  Life Insurance Policies
+fields:
+  - Do you want to add any life insurance polices?: life_insurance.there_are_any
+    datatype: yesnoradio
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: life_insurance.selected_types
+    datatype: checkboxes
+    code: |
+      life_insurance_ordered
+---
+id: life_insurance complete
+code: |
+  life_insurance[i].market_value
+  life_insurance[i].complete = True
+---
+id: describe other asset
+reconsider: life_insurance[i].display_name
+question: |
+  Tell us about your ${ ordinal(i) } life insurance policy.
+subquestion: |
+
+  Make your best guess for the market value.
+  
+
+fields:
+  - Name of insured: life_insurance[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Beneficiary: life_insurance[i].beneficiary
+  - Company: life_insurance[i].company
+  - Face Value: life_insurance[i].market_value
+    maxlength: 76
+    datatype: currency
+  - Balance: life_insurance[i].balance
+    maxlength: 76
+    datatype: currency
+
+---
+id: life_insurance set display name
+code: |
+  if defined('life_insurance[i].source') and life_insurance[i].source != "other":
+    life_insurance[i].display_name = life_insurance.terms_ordered.get(life_insurance[i].source, life_insurance[i].source)
+  elif defined('life_insurance[i].source') and life_insurance[i].source == "other" and defined('life_insurance[i].source_other'):
+    life_insurance[i].display_name = life_insurance[i].source_other
+  else:
+    life_insurance[i].display_name = life_insurance_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ life_insurance_table }
+  
+  ${ life_insurance.add_action() }
+continue button field: life_insurance.review_items
+---
+id: other assets revisit
+continue button field: life_insurance.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ life_insurance_table }
+
+  ${ life_insurance.add_action() }
+---
+table: life_insurance_table
+rows: life_insurance
+columns:
+  - Name of insured: row_item.owner
+  - Beneficiary: row_item.beneficiary
+  - Company: row_item.company
+  - Face Value: row_item.market_value
+  - Balance: row_item.balance
+edit:
+  - market_value
+
+---
+### pensions ###
+id: pensions terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: pensions.terms_ordered
+data: !!omap
+  - defined_ben: "Defined benefit"
+  - defined_cont: "Defined contribution"
+  - target_ben: "Target benefit"
+  - military: "Military pension"
+  - sep: "SEP"
+  - other: "Other"
+---
+id: pensions other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  pensions_other_display = "other asset"
+---
+id: pensions object
+objects:
+  - pensions: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: pensions ordered object for checkboxes
+objects:
+  - pensions_ordered: DAOrderedDict.using(elements=pensions.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  will use id: ALIncomeList there are any
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: pensions.selected_types
+    datatype: checkboxes
+    code: |
+      pensions_ordered
+---
+id: pensions complete
+code: |
+  pensions[i].market_value
+  pensions[i].complete = True
+---
+id: describe other asset
+reconsider: pensions[i].display_name
+question: |
+  Tell us about your ${ pensions[i].display_name }
+subquestion: |
+
+  Make your best guess for the market value.
+  
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in pensions.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in pensions.complete_elements()) }.
+  % endif
+fields:
+  - Type of asset: pensions[i].source
+    code: |
+      pensions_ordered
+  - Other (explain): pensions[i].source_other
+    show if:
+      variable: pensions[i].source
+      is: other
+  - Owner: pensions[i].owner
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+      - ${ users[0].name } & ${ other_parties[0].name }
+  - Pension Administrator: pensions[i].administrator
+  - What is its market value? How much would you get if you sold it?: pensions[i].market_value
+    maxlength: 76
+    datatype: currency
+validation code: |
+  if pensions[i].source != "other":
+    pensions[i].display_name = pensions.terms_ordered.get(pensions[i].source, pensions[i].source)
+  else:
+    pensions[i].display_name = pensions[i].source_other
+---
+id: pensions set display name
+code: |
+  if defined('pensions[i].source') and pensions[i].source != "other":
+    pensions[i].display_name = pensions.terms_ordered.get(pensions[i].source, pensions[i].source)
+  elif defined('pensions[i].source') and pensions[i].source == "other" and defined('pensions[i].source_other'):
+    pensions[i].display_name = pensions[i].source_other
+  else:
+    pensions[i].display_name = pensions_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ pensions_table }
+  
+  ${ pensions.add_action() }
+continue button field: pensions.review_items
+---
+id: other assets revisit
+continue button field: pensions.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ pensions_table }
+
+  ${ pensions.add_action() }
+---
+table: pensions_table
+rows: pensions
+columns:
+  - Owner: row_item.owner
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Pension administrator: row_item.administrator
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+---
+### personal_property ###
+id: personal_property terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: personal_property.terms_ordered
+data: !!omap
+  - jewelry: "Jewelry"
+  - antiques: "Antiques"
+  - artwork: "Artwork"
+  - guns: "Guns"
+  - coins_stamps: "Coins / stamps"
+  - tools: "Tools"
+  - collectibles: "Collectibles"
+  - instruments: "Piano / musical instruments"
+  - china_etc: "China / crystal / silverware"
+  - appliances: "Appliances"
+  - computers: "Computers"
+  - electronics: "Electronics"
+  - furnishings: "Furnishings / furniture"
+  - other: "Other"
+---
+id: personal_property other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  personal_property_other_display = "other asset"
+---
+id: personal_property object
+objects:
+  - personal_property: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: personal_property ordered object for checkboxes
+objects:
+  - personal_property_ordered: DAOrderedDict.using(elements=personal_property.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  will use id: ALIncomeList there are any
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: personal_property.selected_types
+    datatype: checkboxes
+    code: |
+      personal_property_ordered
+---
+id: personal_property complete
+code: |
+  personal_property[i].market_value
+  personal_property[i].complete = True
+---
+id: describe other asset
+reconsider: personal_property[i].display_name
+question: |
+  Tell us about your ${ personal_property[i].display_name }
+subquestion: |
+
+  Make your best guess for the market value.
+  
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in personal_property.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in personal_property.complete_elements()) }.
+  % endif
+fields:
+  - Type of asset: personal_property[i].source
+    code: |
+      personal_property_ordered
+  - Other (explain): personal_property[i].source_other
+    show if:
+      variable: personal_property[i].source
+      is: other
+  - What is its market value? How much would you get if you sold it?: personal_property[i].market_value
+    maxlength: 76
+    datatype: currency
+  - In your possession: personal_property[i].in_users_possession
+    datatype: yesnoradio
+  - Loans/Debts on Property: personal_property[i].amount_owed
+    datatype: currency
+  - Person Paying on Loan/Debt: personal_property[i].amount_owed_who_pays
+    choices:
+      - ${ users[0].name }
+      - ${ other_parties[0].name }
+    js show if: |
+      val('personal_property[i].amount_owed') > 0
+validation code: |
+  if personal_property[i].source != "other":
+    personal_property[i].display_name = personal_property.terms_ordered.get(personal_property[i].source, personal_property[i].source)
+  else:
+    personal_property[i].display_name = personal_property[i].source_other
+---
+id: personal_property set display name
+code: |
+  if defined('personal_property[i].source') and personal_property[i].source != "other":
+    personal_property[i].display_name = personal_property.terms_ordered.get(personal_property[i].source, personal_property[i].source)
+  elif defined('personal_property[i].source') and personal_property[i].source == "other" and defined('personal_property[i].source_other'):
+    personal_property[i].display_name = personal_property[i].source_other
+  else:
+    personal_property[i].display_name = personal_property_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ personal_property_table }
+  
+  ${ personal_property.add_action() }
+continue button field: personal_property.review_items
+---
+id: other assets revisit
+continue button field: personal_property.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ personal_property_table }
+
+  ${ personal_property.add_action() }
+---
+table: personal_property_table
+rows: personal_property
+columns:
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+  - balance
+---
+### retirement_accounts ###
+id: retirement_accounts terms_ordered
+# "!!omap" makes these terms ordered
+# their order here will be their same order when shown to users.
+variable name: retirement_accounts.terms_ordered
+data: !!omap
+  - ira: "IRA (the form asks for IRA #1 and IRA #2)"
+  - 401k: "401K (the form asks for 401K #1 and 401K #2)"
+  - 403b: "403B"
+  - tiaacref: "TIAA/CREF"
+  - keogh: "Keogh"
+  - tdsp: "TDSP"
+  - tsa: "TSA"
+  - profitshare: "Profit sharing"
+  - ssp: "Savings & Security Program"
+  - defcomp: "Deferred compensation"
+  - other: "Other"
+---
+id: retirement_accounts other display
+comment: |
+  This keeps the text that may be changed near the top of the section.
+  Used in:
+  Tell us about your ______
+code: |
+  retirement_accounts_other_display = "other asset"
+---
+id: retirement_accounts object
+objects:
+  - retirement_accounts: ALAssetList.using(complete_attribute='complete',there_is_another=False)
+---
+id: retirement_accounts ordered object for checkboxes
+objects:
+  - retirement_accounts_ordered: DAOrderedDict.using(elements=retirement_accounts.terms_ordered, auto_gather=False, gathered=True)
+---
+comment: |
+  will use id: ALIncomeList there are any
+---
+id: other assets
+question: |
+  Other large assets that you have not entered already
+subquestion: |   
+  Check any that apply to you.
+  
+  Note: Do **not** include retirement accounts.
+fields:
+  - no label: retirement_accounts.selected_types
+    datatype: checkboxes
+    code: |
+      retirement_accounts_ordered
+---
+id: retirement_accounts complete
+code: |
+  retirement_accounts[i].market_value
+  retirement_accounts[i].complete = True
+---
+id: describe other asset
+reconsider: retirement_accounts[i].display_name
+question: |
+  Tell us about your ${ retirement_accounts[i].display_name }
+subquestion: |
+
+  Make your best guess for the market value.
+  
+  % if i > 1:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in retirement_accounts.complete_elements()) }.
+  % elif i > 0:
+  You have already told us about your ${ comma_and_list(asset.display_name for asset in retirement_accounts.complete_elements()) }.
+  % endif
+fields:
+  - Owner:  retirement_accounts[i].owner
+  - Type of asset: retirement_accounts[i].source
+    code: |
+      retirement_accounts_ordered
+  - Other (explain): retirement_accounts[i].source_other
+    show if:
+      variable: retirement_accounts[i].source
+      is: other
+  - Financial Institution:  retirement_accounts[i].bank
+  - What is its market value? How much would you get if you sold it?: retirement_accounts[i].market_value
+    maxlength: 76
+    datatype: currency
+validation code: |
+  if retirement_accounts[i].source != "other":
+    retirement_accounts[i].display_name = retirement_accounts.terms_ordered.get(retirement_accounts[i].source, retirement_accounts[i].source)
+  else:
+    retirement_accounts[i].display_name = retirement_accounts[i].source_other
+---
+id: retirement_accounts set display name
+code: |
+  if defined('retirement_accounts[i].source') and retirement_accounts[i].source != "other":
+    retirement_accounts[i].display_name = retirement_accounts.terms_ordered.get(retirement_accounts[i].source, retirement_accounts[i].source)
+  elif defined('retirement_accounts[i].source') and retirement_accounts[i].source == "other" and defined('retirement_accounts[i].source_other'):
+    retirement_accounts[i].display_name = retirement_accounts[i].source_other
+  else:
+    retirement_accounts[i].display_name = retirement_accounts_other_display
+---
+id: want to add more other assets
+question: Do you want to list any more other assets?
+subquestion: |
+  Tap Next if you don't have more to add.
+  
+  ${ retirement_accounts_table }
+  
+  ${ retirement_accounts.add_action() }
+continue button field: retirement_accounts.review_items
+---
+id: other assets revisit
+continue button field: retirement_accounts.revisit
+question: |
+  Edit other assets
+subquestion: |
+  ${ retirement_accounts_table }
+
+  ${ retirement_accounts.add_action() }
+---
+table: retirement_accounts_table
+rows: retirement_accounts
+columns:
+  - Owner: |
+      row_item.owner
+  - Description: |
+      row_item.display_name if defined("row_item.source") else ""
+  - Financial Institution: |
+      row_item.bank
+  - Market value: |
+      currency(row_item.market_value) if defined("row_item.market_value") else ""
+edit:
+  - source
+  - market_value
+---
+id: transfer of assets
+question: Transfer/sale of assets
+fields:
+  - Have you or the other party sold or transferred ownership of any asset in the last 12 months?: sold_or_transferred_asset
+    datatype: yesnoradio
+  - Have you or the other party withdrawn funds from an account in the last 12 months for a purpose other than paying normal household expense payments?: withdrew_extra_funds
+    datatype: yesnoradio
+---
+id: transfer of assets explanation
+question: Transfer/sale of assets
+fields:
+  - Please list asset sold or transferred OR account from which withdrawal was made, amounts received or withdrawn and any expenditure made from amounts received.: explain_transfer_or_withdrawal
+    datatype: area
+    
+---
+############################# SIGNATURE #############################
+---
+id: User signature
+question: |
+  User signature
+continue button field: User_signature
+---
+id: signature choice
+decoration: file-signature
+question: |
+  Your documents are almost ready
+subquestion: |
+  How do you want to sign them?
+fields: 
+  - I will sign: signature_choice
+    input type: radio
+    choices:
+      - On my computer or phone: this_device
+    show if:
+      code: |
+        al_form_requires_digital_signature
+  - I will sign: signature_choice
+    input type: radio
+    choices:
+      - On my computer or phone: this_device
+      - On the paper with a pen after I print the documents: sign_after_printing
+    show if:
+      code: |
+        not al_form_requires_digital_signature
+continue button field: saw_signature_choice    
+---
+
+##################### PREVIEW SCREEN #######################
+---
+id: preview VT_fee_waiver
+question: |
+  Preview your form before you sign it
+subquestion: |
+
+  Here is a preview of the form you will sign on the next screen. 
+  
+  ${ al_court_bundle.as_pdf(key='preview') }
+
+  Click the image to view it in a new tab. **Remember to come back to this screen to edit the form and/or finish the form.**
+  
+  Click the "Edit your answers" button to make changes.
+
+  ${ action_button_html(url_action('review_VT_813B'), label='<i class="fa-solid fa-pencil"></i> Edit your answers', color='info') }
+
+  **Tap Next to choose how to sign your form.**
+  
+continue button field: VT_fee_waiver_preview_question    
+---
+code: |
+  signature_fields = ['users[0].signature']
+---
+code: |
+  # This is a placeholder for the addresses that will be searched
+  # for matching address to court. Edit if court venue is based on 
+  # a different address than the user's
+  addresses_to_search = [user.address for user in users]
+---
+
+  
+  
+
+##################### REVIEW SCREEN #######################
+
+#In review screen and attachment code, do not use .there_are_any for conditional logic or if defined. Instead, use something like % if public_benefits.number_gathered() > 0   or  % if public_benefits.number_gathered() == 0 
+
+---
+id: VT fee waiver review screen
+event: review_VT_813B
+question: |
+  Review and edit your answers
+subquestion: |  
+  ${ review_screen_instructions }
+
+  ###Your court case
+  
+review:
+  - Edit: 
+    - user_selected_county
+    - recompute:
+      - trial_court_index
+      - trial_court
+    button: |
+      **Is in this county**: ${( trial_court.address.county )} County
+
+
+  - Edit: docket_number
+    button: |
+      **Case number**:
+      % if dont_know_docket_number:
+      Unknown
+      % else:
+      ${ showifdef("docket_number") }
+      % endif
+      
+  - Edit: case_name
+    button: |
+      **Case name**:
+      ${ case_name }
+      
+  - note: |
+      ###About you
+  - Edit: users.revisit
+    button: |
+      **Your name, contact information and signature**
+
+      % for item in users:
+      * ${ item }
+      % endfor
+
+
+
+  - note: |
+      ###Assets      
+      
+  - Edit: 
+      - real_estate.revisit
+    button: |
+      **Real estate**
+
+      % for item in real_estate.complete_elements():
+      % if item.source == "primary residence":
+      * primary residence
+      % else:
+      * ${ item.display_name.lower() }
+      % endif
+      % endfor
+      % if real_estate.number_gathered() == 0:
+      - None
+      % endif
+
+  - Edit: personal_property.revisit
+    button: |
+      **Personal Property**
+      
+      % for item in personal_property:
+      * ${ item.display_name.lower() }          
+      % endfor
+      % if personal_property.number_gathered() == 0:
+      - None
+      % endif
+  - Edit: vehicles.revisit
+    button: |
+      **Vehicles**
+      
+      % for item in vehicles:
+      * ${ item.make } ${ item.model } ${ item.year }          
+      % endfor
+      % if vehicles.number_gathered() == 0:
+      - None
+      % endif
+  - Edit: businesses.revisit
+    button: |
+      **Business Ownership**
+      
+      % for item in businesses:
+      - ${ item.display_name.lower() }
+      % endfor
+      % if businesses.number_gathered() == 0:
+      - None
+      % endif   
+
+
+  - Edit: investments.revisit
+    button: |
+      **Investments**
+      
+      % for item in investments:
+      - ${ item.display_name.lower() }
+      % endfor
+      % if investments.number_gathered() == 0:
+      - None
+      % endif   
+
+  - Edit: bank_assets.revisit
+    button: |
+      **Bank accounts and cash**
+      
+      % for item in bank_assets:
+      - ${ item.display_name.lower() }
+      % endfor
+      % if bank_assets.number_gathered() == 0:
+      - None
+      % endif   
+      
+  - Edit: accounts_held_for_benefit.revisit
+    button: |
+      **Accounts/Funds Held for Benefit**
+      
+      % for item in accounts_held_for_benefit:
+      - ${ item.type.lower() }
+      % endfor
+      % if accounts_held_for_benefit.number_gathered() == 0:
+      - None
+      % endif   
+      
+
+
+  - Edit: life_insurance.revisit
+    button: |
+      **Life Insurance**
+      
+      % for item in life_insurance:
+      - ${ item.company.lower() }
+      % endfor
+      % if life_insurance.number_gathered() == 0:
+      - None
+      % endif   
+            
+
+
+  - Edit: retirement_accounts.revisit
+    button: |
+      **Retirement Accounts**
+      
+      % for item in retirement_accounts:
+      - ${ item.display_name.lower() }
+      % endfor
+      % if retirement_accounts.number_gathered() == 0:
+      - None
+      % endif   
+            
+
+  - label: Edit
+    fields:
+      - pensions.revisit
+      - recompute:
+        - pensions.user_owned
+        - pensions.other_party_owned
+    button: |
+      **Pensions**
+      
+      % for item in pensions:
+      - ${ item.display_name.lower() }
+      % endfor
+      % if pensions.number_gathered() == 0:
+      - None
+      % endif   
+      
+  - Edit: signature_date
+    button: |
+      **Date of signature for these forms**:
+      ${ signature_date }
+
+  - note: |
+      **Select Resume, below, when you are done. It will take a moment to generate your form again.**
+---
+##################### DOWNLOAD SCREEN #####################
+---
+id: download VT_fee_waiver
+event: VT_fee_waiver_download
+question: |
+  ${ download_screen_instructions_headline_one_form }
+subquestion: |
+  
+  ${ download_screen_instructions_one_form }
+
+  ${ action_button_html(url_action('review_VT_fee_waiver'), label='<i class="fa-solid fa-pencil"></i> Edit your answers', color='info') }
+
+  <hr>
+  
+  <h4 style="margin-bottom: 18px;">Documents to download</h4>
+  
+  ${ al_user_bundle.download_list_html() }
+
+  ${ al_user_bundle.send_button_html(show_editable_checkbox=False) }
+
+  <hr>  
+  
+  ${ download_screen_bottom_instructions }
+  
+  ${ collapse_template(not_seeing_email) }
+  ${ collapse_template(log_out_when_done) }
+
+progress: 100
+---
+##################### OVERFLOW + ADDENDUM #####################
+---
+attachment:
+  variable name: VT_813B_attachment.addendum
+  docx template file: VT_fee_waiver_addendum.docx
+---
+code: |
+  VT_813B_attachment.overflow_fields["public_benefits"].label = "Other public assistance that is part of the reported monthly amount"
+  VT_813B_attachment.overflow_fields["public_benefits"].overflow_trigger = 3
+  VT_813B_attachment.overflow_fields["public_benefits"].headers = [
+    {'display_name': "Public assistance"},
+  ]  
+
+  VT_813B_attachment.overflow_fields["jobs"].label = "Additional jobs"
+  VT_813B_attachment.overflow_fields["jobs"].overflow_trigger = 2
+  VT_813B_attachment.overflow_fields["jobs"].headers = [
+    {'employer': "Employer"},    
+    {'employer_name_address_phone()': "Employer address"},
+  ]  
+  
+  VT_813B_attachment.overflow_fields["vehicles"].label = "Additional vehicles"
+  VT_813B_attachment.overflow_fields["vehicles"].overflow_trigger = 4
+  #VT_813B_attachment.overflow_fields["vehicles"].headers = [
+    #{'make': "Make"},
+    #{'model': "Model"},
+    #{'year': "Year"},
+    #{'market_value': "Fair market value"},
+    #{'balance': "Amount owed"},
+  #]  
+  
+  VT_813B_attachment.overflow_fields["real_estate"].label = "Additional real estate"
+  VT_813B_attachment.overflow_fields["real_estate"].overflow_trigger = 2
+  #VT_813B_attachment.overflow_fields["real_estate"].headers = [
+    #{'display_name': "Description"},
+    #{'market_value': "Fair market value"},
+    #{'balance': "Amount owed"},
+  #]  
+
+  VT_813B_attachment.overflow_fields["other_assets"].label = "Additional assets"
+  VT_813B_attachment.overflow_fields["other_assets"].overflow_trigger = 2
+  #VT_813B_attachment.overflow_fields["other_assets"].headers = [
+    #{'display_name': "Description"},
+    #{'market_value': "Fair market value"},
+  #]  
+  
+  VT_813B_attachment.overflow_fields["other_reasons_why_cannot_afford"].overflow_trigger = 620
+  VT_813B_attachment.overflow_fields["other_reasons_why_cannot_afford"].label = "Additional reasons why I cannot afford the fees"
+  VT_813B_attachment.overflow_fields.gathered = True
+---
+##################### ATTACHMENTS #####################
+---
+objects:
+  - VT_813B_post_interview_instructions: ALDocument.using(title="NEXT STEPS - Instructions for filing this form with the court", filename="VT_813B_next_steps.docx", enabled=True, has_addendum=False, default_overflow_message=AL_DEFAULT_OVERFLOW_MESSAGE)
+  - VT_813B_attachment: ALDocument.using(title="Vermont 813B", filename="VT_813B.pdf", enabled=True, has_addendum=True, default_overflow_message=AL_DEFAULT_OVERFLOW_MESSAGE)
+---
+objects:
+  - al_user_bundle: ALDocumentBundle.using(elements=[VT_813B_post_interview_instructions,VT_813B_attachment], filename="VT_813B.pdf_package.pdf", title="All forms to download for your records", enabled=True)
+  - al_court_bundle: ALDocumentBundle.using(elements=[VT_813B_attachment], filename="VT_813B.pdf_package.pdf", title="All forms to download for your records", enabled=True)
+---
+attachments:
+  - name: VT 813B post interview instructions
+    filename: VT_813B_next_steps
+    variable name: VT_813B_post_interview_instructions[i]        
+    skip undefined: True
+    docx template file: VT_813B_next_steps.docx
+    fields:
+        - "address_county": |
+            % if trial_court_division == "Environmental":
+  
+            % elif trial_court_division == "Judicial Bureau":
+              
+            % else:
+            ${ trial_court.address.county } County
+            % endif
+        - "court_division": |
+            % if trial_court_division == "Unknown":
+
+            % else:
+            ${ trial_court.division }
+            % endif          
+        - "name": ${ trial_court }
+        - "address_address": ${ trial_court.address.address }
+        - "address_unit": ${ trial_court.address.unit }
+        - "address_city": ${ trial_court.address.city }
+        - "address_state": ${ trial_court.address.state }
+        - "address_zip": ${ trial_court.address.zip }
+        - "arbitrary_attribute": ${ trial_court.arbitrary_attribute }
+        - "phone": ${ trial_court.phone }
+        - "email": ${ trial_court.email }
+  
+  - name: VT 813B
+    filename: VT_813B.pdf     
+    variable name: VT_813B_attachment[i]        
+    skip undefined: True
+    pdf template file: VT_813B.pdf
+    fields:
+      - "trial_court_county": ${ trial_court.address.county } 
+      - "docket_number": ${ docket_number } 
+      - "case_name": ${ case_name } 
+      - "users1_name": ${ users[0].name } 
+      - "users1_birthdate": ${ format_date(users[0].birthdate, format='M/d/yyyy')  } 
+      - "other_parties1_name": ${ other_parties[0].name } 
+      - "other_parties1_birthdate": ${ format_date(other_parties[0].birthdate, format='M/d/yyyy')  } 
+      - "role_plaintiff": ${  } 
+      - "role_defendant": ${  } 
+      - "role_other": ${  } 
+      - "user1_other_role": ${  } 
+      - "users1_name_full": ${ users[0].name } 
+      - "users1_address_line_one": ${ users[0].address.line_one() } 
+      - "users1_address_line_two": ${ users[0].address.line_two() } 
+      - "users1_daytime_phone_number": ${ users[0].daytime_phone_number } 
+      - "users1_email": ${ users[0].email } 
+      - "users1_mailing_address_line_one": ${ users[0].mailing_address.line_one() } 
+      - "users1_mailing_address_line_two": ${ users[0].mailing_address.line_one() } 
+      - "users1_evening_phone_number": ${ users[0].evening_phone_number } 
+      - "signature_date": ${ signature_date } 
+      - "users1_name_full__1": ${ users[0].name } 
+      - "users1_assets_real_estate_yes": ${ real_estate.user_owned } 
+      - "users1_assets_real_estate_no": ${ not real_estate.user_owned } 
+      - "other_parties1_real_estate_yes": ${ real_estate.other_party_owned } 
+      - "other_parties1_real_estate_no": ${ not real_estate.other_party_owned } 
+      - "users1_assets_personal_yes": ${ personal_property.user_owned } 
+      - "users1_assets_personal_no": ${ not personal_property.user_owned } 
+      - "other_parties1_assets_personal_yes": ${ personal_property.other_party_owned } 
+      - "other_parties1_assets_personal_no": ${ not personal_property.other_party_owned } 
+      - "users1_assets_vehicle_yes": ${ vehicles.user_owned } 
+      - "users1_assets_vehicle_no": ${ not vehicles.user_owned } 
+      - "other_parties1_assets_vehicle_yes": ${ vehicles.other_party_owned } 
+      - "other_parties1_assets_vehicle_no": ${ not vehicles.other_party_owned } 
+      - "users1_assets_bank_assets_yes": ${ bank_assets.user_owned } 
+      - "users1_assets_bank_assets_no": ${ not bank_assets.user_owned } 
+      - "other_parties1_assets_bank_assets_yes": ${ bank_assets.other_party_owned } 
+      - "other_parties1_assets_bank_assets_no": ${ not bank_assets.other_party_owned } 
+      - "users1_assets_investment_yes": ${ investments.user_owned } 
+      - "users1_assets_investment_no": ${ not investments.user_owned } 
+      - "other_parties1_assets_investment_yes": ${ investments.other_party_owned } 
+      - "other_parties1_assets_investment_no": ${ not investments.other_party_owned } 
+      - "users1_assets_retirement_yes": |
+          ${ retirement_accounts.user_owned or pensions.user_owned } 
+      - "users1_assets_retirement_no": |
+          ${ not retirement_accounts.user_owned and not pensions.user_owned } 
+      - "other_parties1_assets_retirement_yes": |
+          ${ retirement_accounts.other_party_owned or pensions.other_party_owned } 
+      - "other_parties1_assets_retirement_no": |
+          ${ not retirement_accounts.other_party_owned and not pensions.other_party_owned } 
+      - "users1_assets_insur_life_yes": ${ life_insurance.user_owned } 
+      - "users1_assets_insur_life_no": ${ not life_insurance.user_owned } 
+      - "other_parties1_assets_insur_life_yes": ${ life_insurance.other_party_owned } 
+      - "other_parties1_assets_insur_life_no": ${ not life_insurance.other_party_owned } 
+      - "users1_assets_business_yes": ${ businesses.user_owned } 
+      - "users1_assets_business_no": ${ not businesses.user_owned } 
+      - "other_parties1_assets_business_yes": ${ businesses.other_party_owned } 
+      - "other_parties1_assets_business_no": ${ not businesses.other_party_owned } 
+      - "sold_or_transferred_asset_yes": ${ sold_or_transferred_asset } 
+      - "sold_or_transferred_asset_no": ${ not sold_or_transferred_asset } 
+      - "withdrew_extra_funds_yes": ${ withdrew_extra_funds } 
+      - "withdrew_extra_funds_no": ${ not withdrew_extra_funds } 
+      - "explain_transfer_or_withdrawal": ${ explain_transfer_or_withdrawal } 
+      - "assets_real_estate_primary_description": ${ real_estate.matches(source=['primary residence'])[0].description } 
+      - "assets_real_estate_primary_market_value": ${ real_estate.matches(source=['primary residence'])[0].market_value } 
+      - "assets_real_estate_primary_amount_owed": ${ real_estate.matches(source=['primary residence'])[0].balance } 
+      - "assets_real_estate_primary_net_value": ${ round(real_estate.matches(source=['primary residence'])[0].market_value - real_estate.matches(source=['primary residence'])[0].amount_owed,2) } 
+      - "assets_real_estate_second_description": ${ real_estate.matches(source=['second home'])[0].description } 
+      - "assets_real_estate_second_market_value": ${ real_estate.matches(source=['second home'])[0].market_value } 
+      - "assets_real_estate_second_amount_owed": ${ real_estate.matches(source=['second home'])[0].balance } 
+      - "assets_real_estate_second_net_value": ${ round(real_estate.matches(source=['second home'])[0].market_value - real_estate.matches(source=['second home'])[0].amount_owed,2) } 
+      - "assets_real_estate_camp_description": ${ real_estate.matches(source=['camp'])[0].description } 
+      - "assets_real_estate_camp_market_value": ${ real_estate.matches(source=['camp'])[0].market_value } 
+      - "assets_real_estate_camp_amount_owed": ${ real_estate.matches(source=['camp'])[0].balance } 
+      - "assets_real_estate_camp_net_value": ${ round(real_estate.matches(source=['camp'])[0].market_value - real_estate.matches(source=['camp'])[0].amount_owed,2) } 
+      - "assets_real_estate_timeshare_description": ${ real_estate.matches(source=['timeshare'])[0].description } 
+      - "assets_real_estate_timeshare_amount_owed": ${ real_estate.matches(source=['timeshare'])[0].balance } 
+      - "assets_real_estate_timeshare_market_value": ${ real_estate.matches(source=['timeshare'])[0].market_value } 
+      - "assets_real_estate_timeshare_net_value": ${ round(real_estate.matches(source=['timeshare'])[0].market_value - real_estate.matches(source=['timeshare'])[0].amount_owed,2) } 
+      - "assets_real_estate_land_description": ${ real_estate.matches(source=['land'])[0].description } 
+      - "assets_real_estate_land_market_value": ${ real_estate.matches(source=['land'])[0].market_value } 
+      - "assets_real_estate_land_amount_owed": ${ real_estate.matches(source=['land'])[0].balance } 
+      - "assets_real_estate_land_net_value": ${ round(real_estate.matches(source=['land'])[0].market_value - real_estate.matches(source=['land'])[0].amount_owed,2) } 
+      - "assets_real_estate_mobilehome_description": ${ real_estate.matches(source=['mobile home'])[0].description } 
+      - "assets_real_estate_mobilehome_market_value": ${ real_estate.matches(source=['mobile home'])[0].market_value } 
+      - "assets_real_estate_mobilehome_amount_owed": ${ real_estate.matches(source=['mobile home'])[0].balance } 
+      - "assets_real_estate_mobilehome_net_value": ${ round(real_estate.matches(source=['mobile home'])[0].market_value - real_estate.matches(source=['mobile home'])[0].amount_owed,2) } 
+      - "assets_real_estate_rental_description": ${ real_estate.matches(source=['rental'])[0].description } 
+      - "assets_real_estate_rental_market_value": ${ real_estate.matches(source=['rental'])[0].market_value } 
+      - "assets_real_estate_rental_amount_owed": ${ real_estate.matches(source=['rental'])[0].balance } 
+      - "assets_real_estate_rental_net_value": ${ round(real_estate.matches(source=['rental'])[0].market_value - real_estate.matches(source=['rental'])[0].amount_owed,2) } 
+      - "assets_real_estate_commercial_description": ${ real_estate.matches(source=['commercial'])[0].description } 
+      - "assets_real_estate_commercial_market_value": ${ real_estate.matches(source=['commercial'])[0].market_value } 
+      - "assets_real_estate_commercial_amount_owed": ${ real_estate.matches(source=['commercial'])[0].balance } 
+      - "assets_real_estate_commercial_net_value": ${ round(real_estate.matches(source=['commercial'])[0].market_value - real_estate.matches(source=['commercial'])[0].amount_owed,2) } 
+      - "assets_real_estate_other_1_description": ${ real_estate.matches(source=['other'])[0].description } 
+      - "assets_real_estate_other_1_market_value": ${ real_estate.matches(source=['other'])[0].market_value } 
+      - "assets_real_estate_other_1_amount_owed": ${ real_estate.matches(source=['other'])[0].balance } 
+      - "assets_real_estate_other_1_net_value": ${ round(real_estate.matches(source=['other'])[0].market_value - real_estate.matches(source=['other'])[0].amount_owed,2) } 
+      - "assets_real_estate_other_2_description": ${ real_estate.matches(source=['other'])[1].description } 
+      - "assets_real_estate_other_2_market_value": ${ real_estate.matches(source=['other'])[1].market_value } 
+      - "assets_real_estate_other_2_amount_owed": ${ real_estate.matches(source=['other'])[1].balance } 
+      - "assets_real_estate_other_2_net_value": ${ round(real_estate.matches(source=['other'])[1].market_value - real_estate.matches(source=['other'])[1].amount_owed,2) } 
+      - "assets_real_estate_other_3_description": ${ real_estate.matches(source=['other'])[2].description } 
+      - "assets_real_estate_other_3_market_value": ${ real_estate.matches(source=['other'])[2].market_value } 
+      - "assets_real_estate_other_3_amount_owed": ${ real_estate.matches(source=['other'])[2].balance } 
+      - "assets_real_estate_other_3_net_value": ${ round(real_estate.matches(source=['other'])[2].market_value - real_estate.matches(source=['other'])[2].amount_owed,2) } 
+      - "assets_real_estate_other_4_description": ${ real_estate.matches(source=['other'])[3].description } 
+      - "assets_real_estate_other_4_market_value": ${ real_estate.matches(source=['other'])[3].market_value } 
+      - "assets_real_estate_other_4_amount_owed": ${ real_estate.matches(source=['other'])[3].balance } 
+      - "assets_real_estate_other_4_net_value": ${ round(real_estate.matches(source=['other'])[3].market_value - real_estate.matches(source=['other'])[3].amount_owed,2) } 
+      - "assets_real_estate_other_5_description": ${ real_estate.matches(source=['other'])[4].description } 
+      - "assets_real_estate_other_5_market_value": ${ real_estate.matches(source=['other'])[4].market_value } 
+      - "assets_real_estate_other_5_amount_owed": ${ real_estate.matches(source=['other'])[4].balance } 
+      - "assets_real_estate_other_5_net_value": ${ round(real_estate.matches(source=['other'])[4].market_value - real_estate.matches(source=['other'])[4].amount_owed,2) } 
+      - "assets_real_estate_total_market_value": ${ round(real_estate.market_value(),2) } 
+      - "assets_real_estate_total_amount_owed": ${ round(real_estate.balance(),2) } 
+      - "assets_real_estate_total_net_value": ${ round(real_estate.equity(),2) } 
+      - "assets_personal_jewelry_market_value": ${ round(personal_property.matches(source=['jewelry'])[0].market_value,2) } 
+      - "assets_personal_jewelry_in_users_possession": ${ personal_property.matches(source=['jewelry'])[0].in_users_possession } 
+      - "assets_personal_jewelry_amount_owed": ${ round(personal_property.matches(source=['jewelry'])[0].amount_owed,2) } 
+      - "assets_personal_jewelry_amount_owed_who_pays": ${ personal_property.matches(source=['jewelry'])[0].amount_owed_who_pays } 
+      - "assets_personal_antiques_market_value": ${ round(personal_property.matches(source=['antiques'])[0].market_value,2) } 
+      - "assets_personal_antiques_in_users_possession": ${ personal_property.matches(source=['antiques'])[0].in_users_possession } 
+      - "assets_personal_antiques_amount_owed": ${ round(personal_property.matches(source=['antiques'])[0].amount_owed,2) } 
+      - "assets_personal_antiques_amount_owed_who_pays": ${ personal_property.matches(source=['antiques'])[0].amount_owed_who_pays } 
+      - "assets_personal_artwork_market_value": ${ round(personal_property.matches(source=['artwork'])[0].market_value,2) } 
+      - "assets_personal_artwork_in_users_possession": ${ personal_property.matches(source=['artwork'])[0].in_users_possession } 
+      - "assets_personal_artwork_amount_owed": ${ round(personal_property.matches(source=['artwork'])[0].amount_owed,2) } 
+      - "assets_personal_artwork_amount_owed_who_pays": ${ personal_property.matches(source=['artwork'])[0].amount_owed_who_pays } 
+      - "assets_personal_guns_market_value": ${ round(personal_property.matches(source=['guns'])[0].market_value,2) } 
+      - "assets_personal_guns_is_users_possession": ${ personal_property.matches(source=['guns'])[0].in_users_possession } 
+      - "assets_personal_guns_amount_owed": ${ round(personal_property.matches(source=['guns'])[0].amount_owed,2) } 
+      - "assets_personal_guns_amount_owed_who_pays": ${ personal_property.matches(source=['guns'])[0].amount_owed_who_pays } 
+      - "assets_personal_coins_stamps_market_value": ${ round(personal_property.matches(source=['coins_stamps'])[0].market_value,2) } 
+      - "assets_personal_coins_stamps_in users_possession": ${ personal_property.matches(source=['coins_stamps'])[0].in_users_possession } 
+      - "assets_personal_coins_stamps_amount_owed": ${ round(personal_property.matches(source=['coins_stamps'])[0].amount_owed,2) } 
+      - "assets_personal_coins_stamps_amount_owed_who_pays": ${ personal_property.matches(source=['coins_stamps'])[0].amount_owed_who_pays } 
+      - "assets_personal_tools_market_value": ${ round(personal_property.matches(source=['tools'])[0].market_value,2) } 
+      - "assets_personal_tools_in_users_possession": ${ personal_property.matches(source=['tools'])[0].in_users_possession } 
+      - "assets_personal_tools_amount_owed": ${ round(personal_property.matches(source=['tools'])[0].amount_owed,2) } 
+      - "assets_personal_tools_amount_owed_who_pays": ${ personal_property.matches(source=['tools'])[0].amount_owed_who_pays } 
+      - "assets_personal_collectibles_market_value": ${ round(personal_property.matches(source=['collectibles'])[0].market_value,2) } 
+      - "assets_personal_collectibles_in_users_possession": ${ personal_property.matches(source=['collectibles'])[0].in_users_possession } 
+      - "assets_personal_collectibles_amount_owed": ${ round(personal_property.matches(source=['collectibles'])[0].amount_owed,2) } 
+      - "assets_personal_collectibles_amount_owed_who_pays": ${ personal_property.matches(source=['collectibles'])[0].amount_owed_who_pays } 
+      - "assets_personal_instruments_market_value": ${ round(personal_property.matches(source=['instruments'])[0].market_value,2) } 
+      - "assets_personal_instruments_in_users_possession": ${ personal_property.matches(source=['instruments'])[0].in_users_possession } 
+      - "assets_personal_instruments_amount_owed": ${ round(personal_property.matches(source=['instruments'])[0].amount_owed,2) } 
+      - "assets_personal_instruments_amount_owed_who_pays": ${ personal_property.matches(source=['instruments'])[0].amount_owed_who_pays } 
+      - "assets_personal_china_etc_market_value": ${ round(personal_property.matches(source=['china_etc'])[0].market_value,2) } 
+      - "assets_personal_china_etc_in_users_possession": ${ personal_property.matches(source=['china_etc'])[0].in_users_possession } 
+      - "assets_personal_china_etc_amount_owed": ${ round(personal_property.matches(source=['china_etc'])[0].amount_owed,2) } 
+      - "assets_personal_china_etc_amount_owed_who_pays": ${ personal_property.matches(source=['china_etc'])[0].amount_owed_who_pays } 
+      - "assets_personal_appliances_market_value": ${ round(personal_property.matches(source=['appliances'])[0].market_value,2) } 
+      - "assets_personal_appliances_in_users_possession": ${ personal_property.matches(source=['appliances'])[0].in_users_possession } 
+      - "assets_personal_appliances_amount_owed": ${ round(personal_property.matches(source=['appliances'])[0].amount_owed,2) } 
+      - "assets_personal_appliances_amount_owed_who_pays": ${ personal_property.matches(source=['appliances'])[0].amount_owed_who_pays } 
+      - "assets_personal_electronics_market_value": ${ round(personal_property.matches(source=['electronics'])[0].market_value,2) } 
+      - "assets_personal_electronics_in_users_possession": ${ personal_property.matches(source=['electronics'])[0].in_users_possession } 
+      - "assets_personal_electronics_amount_owed": ${ round(personal_property.matches(source=['electronics'])[0].amount_owed,2) } 
+      - "assets_personal_electronics_amount_owed_who_pays": ${ personal_property.matches(source=['electronics'])[0].amount_owed_who_pays } 
+      - "assets_personal_furnishings_market_value": ${ round(personal_property.matches(source=['furnishings'])[0].market_value,2) } 
+      - "assets_personal_furnishings_in_users_possession": ${ personal_property.matches(source=['furnishings'])[0].in_users_possession } 
+      - "assets_personal_furnishings_amount_owed": ${ round(personal_property.matches(source=['furnishings'])[0].amount_owed,2) } 
+      - "assets_personal_furnishings_amount_owed_who_pays": ${ personal_property.matches(source=['furnishings'])[0].amount_owed_who_pays } 
+      - "assets_personal_computers_market_value": ${ round(personal_property.matches(source=['computers'])[0].market_value,2) } 
+      - "assets_personal_computers_in_users_possession": ${ personal_property.matches(source=['computers'])[0].in_users_possession } 
+      - "assets_personal_computers_amount_owed": ${ round(personal_property.matches(source=['computers'])[0].amount_owed,2) } 
+      - "assets_personal_computers_amount_owed_who_pays": ${ personal_property.matches(source=['computers'])[0].amount_owed_who_pays } 
+      - "assets_personal_other_1_description": ${ personal_property.matches(source=['other'])[0].display_name } 
+      - "assets_personal_other_1_market_value": ${ round(personal_property.matches(source=['other'])[0].market_value,2) } 
+      - "assets_personal_other_1_in_users_possession": ${ personal_property.matches(source=['other'])[0].in_users_possession } 
+      - "assets_personal_other_1_amount_owed": ${ round(personal_property.matches(source=['other'])[0].amount_owed,2) } 
+      - "assets_personal_other_1_amount_owed_who_pays": ${ personal_property.matches(source=['other'])[0].amount_owed_who_pays } 
+      - "assets_personal_other_2_description": ${ personal_property.matches(source=['other'])[1].display_name } 
+      - "assets_personal_other_2_market_value": ${ round(personal_property.matches(source=['other'])[1].market_value,2) } 
+      - "assets_personal_other_2_in_users_possession": ${ personal_property.matches(source=['other'])[1].in_users_possession } 
+      - "assets_personal_other_2_amount_owed": ${ round(personal_property.matches(source=['other'])[1].amount_owed,2) } 
+      - "assets_personal_other_2_amount_owed_who_pays": ${ personal_property.matches(source=['other'])[1].amount_owed_who_pays } 
+      - "assets_personal_other_3_description": ${ personal_property.matches(source=['other'])[2].display_name } 
+      - "assets_personal_other_3_market_value": ${ round(personal_property.matches(source=['other'])[2].market_value,2) } 
+      - "assets_personal_other_3_in_users_possession": ${ personal_property.matches(source=['other'])[2].in_users_possession } 
+      - "assets_personal_other_3_amount_owed": ${ round(personal_property.matches(source=['other'])[2].amount_owed,2) } 
+      - "assets_personal_other_3_amount_owed_who_pays": ${ personal_property.matches(source=['other'])[2].amount_owed_who_pays } 
+      - "assets_vehicle_car_1_owner": ${ vehicles.matches(source=['car'])[0].owner } 
+      - "assets_vehicle_car_1_description": ${ vehicles.matches(source=['car'])[0].year_make_model() } 
+      - "assets_vehicle_car_1_market_value": ${ round(vehicles.matches(source=['car'])[0].market_value,2) } 
+      - "assets_vehicle_car_1_amount_owed": ${ round(vehicles.matches(source=['car'])[0].amount_owed,2) } 
+      - "assets_vehicle_car_1_net_value": ${ round(vehicles.matches(source=['car'])[0].market_value - vehicles.matches(source=['car'])[0].amount_owed,2) } 
+      - "assets_vehicle_car_2_owner": ${ vehicles.matches(source=['car'])[1].owner } 
+      - "assets_vehicle_car_2_description": ${ vehicles.matches(source=['car'])[1].year_make_model() } 
+      - "assets_vehicle_car_2_market_value": ${ round(vehicles.matches(source=['car'])[1].market_value,2) } 
+      - "assets_vehicle_car_2_amount_owed": ${ round(vehicles.matches(source=['car'])[1].amount_owed,2) } 
+      - "assets_vehicle_car_2_net_value": ${ round(vehicles.matches(source=['car'])[1].market_value - vehicles.matches(source=['car'])[1].amount_owed,2) } 
+      - "assets_vehicle_truck_1_owner": ${ vehicles.matches(source=['truck'])[0].owner } 
+      - "assets_vehicle_truck_1_description": ${ vehicles.matches(source=['truck'])[0].year_make_model() } 
+      - "assets_vehicle_truck_1_market_value": ${ round(vehicles.matches(source=['truck'])[0].market_value,2) } 
+      - "assets_vehicle_truck_1_amount_owed": ${ round(vehicles.matches(source=['truck'])[0].amount_owed,2) } 
+      - "assets_vehicle_truck_1_net_value": ${ round(vehicles.matches(source=['truck'])[0].market_value - vehicles.matches(source=['truck'])[0].amount_owed,2) } 
+      - "assets_vehicle_truck_2_owner": ${ vehicles.matches(source=['truck'])[1].owner } 
+      - "assets_vehicle_truck_2_description": ${ vehicles.matches(source=['truck'])[1].year_make_model() } 
+      - "assets_vehicle_truck_2_market_value": ${ round(vehicles.matches(source=['truck'])[1].market_value,2) } 
+      - "assets_vehicle_truck_2_amount_owed": ${ round(vehicles.matches(source=['truck'])[1].amount_owed,2) } 
+      - "assets_vehicle_truck_2_net_value": ${ round(vehicles.matches(source=['truck'])[1].market_value - vehicles.matches(source=['truck'])[1].amount_owed,2) } 
+      - "assets_vehicle_motorcycle_1_owner": ${ vehicles.matches(source=['motorcycle'])[0].owner } 
+      - "assets_vehicle_motorcycle_1_description": ${ vehicles.matches(source=['motorcycle'])[0].year_make_model() } 
+      - "assets_vehicle_motorcycle_1_market_value": ${ round(vehicles.matches(source=['motorcycle'])[0].market_value,2) } 
+      - "assets_vehicle_motorcycle_1_amount_owed": ${ round(vehicles.matches(source=['motorcycle'])[0].amount_owed,2) } 
+      - "assets_vehicle_motorcycle_1_net_value": ${ round(vehicles.matches(source=['motorcycle'])[0].market_value - vehicles.matches(source=['motorcycle'])[0].amount_owed,2) } 
+      - "assets_vehicle_motorcycle_2_owner": ${ vehicles.matches(source=['motorcycle'])[1].owner } 
+      - "assets_vehicle_motorcycle_2_description": ${ vehicles.matches(source=['motorcycle'])[1].year_make_model() } 
+      - "assets_vehicle_motorcycle_2_market_value": ${ round(vehicles.matches(source=['motorcycle'])[1].market_value,2) } 
+      - "assets_vehicle_motorcycle_2_amount_owed": ${ round(vehicles.matches(source=['motorcycle'])[1].amount_owed,2) } 
+      - "assets_vehicle_motorcycle_2_net_value": ${ round(vehicles.matches(source=['motorcycle'])[1].market_value - vehicles.matches(source=['motorcycle'])[1].amount_owed,2) } 
+      - "assets_vehicle_boat_1_owner": ${ vehicles.matches(source=['boat'])[0].owner } 
+      - "assets_vehicle_boat_1_description": ${ vehicles.matches(source=['boat'])[0].year_make_model() } 
+      - "assets_vehicle_boat_1_market_value": ${ round(vehicles.matches(source=['boat'])[0].market_value,2) } 
+      - "assets_vehicle_boat_1_amount_owed": ${ round(vehicles.matches(source=['boat'])[0].amount_owed,2) } 
+      - "assets_vehicle_boat_1_net_value": ${ round(vehicles.matches(source=['boat'])[0].market_value - vehicles.matches(source=['boat'])[0].amount_owed,2) } 
+      - "assets_vehicle_boat_2_owner": ${ vehicles.matches(source=['boat'])[1].owner } 
+      - "assets_vehicle_boat_2_description": ${ vehicles.matches(source=['boat'])[1].year_make_model() } 
+      - "assets_vehicle_boat_2_market_value": ${ round(vehicles.matches(source=['boat'])[1].market_value,2) } 
+      - "assets_vehicle_boat_2_amount_owed": ${ round(vehicles.matches(source=['boat'])[1].amount_owed,2) } 
+      - "assets_vehicle_boat_2_net_value": ${ round(vehicles.matches(source=['boat'])[1].market_value - vehicles.matches(source=['boat'])[1].amount_owed,2) } 
+      - "assets_vehicle_snowmobile_1_owner": ${ vehicles.matches(source=['boat'])[0].owner } 
+      - "assets_vehicle_snowmobile_1_description": ${ vehicles.matches(source=['boat'])[0].year_make_model() } 
+      - "assets_vehicle_snowmobile_1_market_value": ${ round(vehicles.matches(source=['snowmobile'])[0].market_value,2) } 
+      - "assets_vehicle_snowmobile_1_amount_owed": ${ round(vehicles.matches(source=['snowmobile'])[0].amount_owed,2) } 
+      - "assets_vehicle_snowmobile_1_net_value": ${ round(vehicles.matches(source=['snowmobile'])[0].market_value - vehicles.matches(source=['snowmobile'])[0].amount_owed,2) } 
+      - "assets_vehicle_snowmobile_2_owner": ${ vehicles.matches(source=['snowmobile'])[1].owner } 
+      - "assets_vehicle_snowmobile_2_description": ${ vehicles.matches(source=['snowmobile'])[1].year_make_model() } 
+      - "assets_vehicle_snowmobile_2_market_value": ${ round(vehicles.matches(source=['snowmobile'])[1].market_value,2) } 
+      - "assets_vehicle_snowmobile_2_amount_owed": ${ round(vehicles.matches(source=['snowmobile'])[1].amount_owed,2) } 
+      - "assets_vehicle_snowmobile_2_net_value": ${ round(vehicles.matches(source=['snowmobile'])[1].market_value - vehicles.matches(source=['snowmobile'])[1].amount_owed,2) } 
+      - "assets_vehicle_atv_1_owner": ${ vehicles.matches(source=['ATV'])[0].owner } 
+      - "assets_vehicle_atv_1_description": ${ vehicles.matches(source=['ATV'])[0].year_make_model() } 
+      - "assets_vehicle_atv_1_amount_owed": ${ round(vehicles.matches(source=['ATV'])[0].amount_owed,2) } 
+      - "assets_vehicle_atv_1_market_value": ${ round(vehicles.matches(source=['ATV'])[0].market_value,2) } 
+      - "assets_vehicle_atv_1_net_value": ${ round(vehicles.matches(source=['ATV'])[0].market_value - vehicles.matches(source=['ATV'])[0].amount_owed,2) } 
+      - "assets_vehicle_atv_2_owner": ${ vehicles.matches(source=['ATV'])[1].owner } 
+      - "assets_vehicle_atv_2_description": ${ vehicles.matches(source=['ATV'])[1].year_make_model() } 
+      - "assets_vehicle_atv_2_market_value": ${ round(vehicles.matches(source=['ATV'])[1].market_value,2) } 
+      - "assets_vehicle_atv_2_amount_owed": ${ round(vehicles.matches(source=['ATV'])[1].amount_owed,2) } 
+      - "assets_vehicle_atv_2_net_value": ${ round(vehicles.matches(source=['ATV'])[1].market_value - vehicles.matches(source=['ATV'])[1].amount_owed,2) } 
+      - "assets_vehicle_camper_1_owner": ${ vehicles.matches(source=['camper'])[0].owner } 
+      - "assets_vehicle_camper_1_description": ${ vehicles.matches(source=['camper'])[0].year_make_model() } 
+      - "assets_vehicle_camper_1_market_value": ${ round(vehicles.matches(source=['camper'])[0].market_value,2) } 
+      - "assets_vehicle_camper_1_amount_owed": ${ round(vehicles.matches(source=['camper'])[0].amount_owed,2) } 
+      - "assets_vehicle_camper_1_net_value": ${ round(vehicles.matches(source=['camper'])[0].market_value - vehicles.matches(source=['camper'])[0].amount_owed,2) } 
+      - "assets_vehicle_rv_owner": ${ vehicles.matches(source=['RV'])[0].owner } 
+      - "assets_vehicle_rv_description": ${ vehicles.matches(source=['RV'])[0].year_make_model() } 
+      - "assets_vehicle_rv_market_value": ${ round(vehicles.matches(source=['RV'])[0].market_value,2) } 
+      - "assets_vehicle_rv_amount_owed": ${ round(vehicles.matches(source=['RV'])[0].amount_owed,2) } 
+      - "assets_vehicle_rv_net_value": ${ round(vehicles.matches(source=['RV'])[0].market_value - vehicles.matches(source=['RV'])[0].amount_owed,2) } 
+      - "assets_vehicle_plane_": ${ vehicles.matches(source=['plane'])[0].owner } 
+      - "assets_vehicle_plane_description": ${ vehicles.matches(source=['plane'])[0].year_make_model() } 
+      - "assets_vehicle_plane_market_value": ${ round(vehicles.matches(source=['plane'])[0].market_value,2) } 
+      - "assets_vehicle_plane_amount_owed": ${ round(vehicles.matches(source=['plane'])[0].amount_owed,2) } 
+      - "assets_vehicle_plane_net_value": ${ round(vehicles.matches(source=['plane'])[0].market_value - vehicles.matches(source=['plane'])[0].amount_owed,2) } 
+      - "assets_vehicle_other_1_owner": ${ vehicles.matches(source=['other'])[0].owner } 
+      - "assets_vehicle_other_1_description": ${ vehicles.matches(source=['other'])[0].year_make_model() } 
+      - "assets_vehicle_other_1_market_value": ${ round(vehicles.matches(source=['other'])[0].market_value,2) } 
+      - "assets_vehicle_other_1_amount_owed": ${ round(vehicles.matches(source=['other'])[0].amount_owed,2) } 
+      - "assets_vehicle_other_1_net_value": ${ round(vehicles.matches(source=['other'])[0].market_value - vehicles.matches(source=['other'])[0].amount_owed,2) } 
+      - "assets_vehicle_other_2_owner": ${ vehicles.matches(source=['other'])[1].owner } 
+      - "assets_vehicle_other_2_description": ${ vehicles.matches(source=['other'])[1].year_make_model() } 
+      - "assets_vehicle_other_2_market_value": ${ round(vehicles.matches(source=['other'])[1].market_value,2) } 
+      - "assets_vehicle_other_2_amount_owed": ${ round(vehicles.matches(source=['other'])[1].amount_owed,2) } 
+      - "assets_vehicle_other_2_net_value": ${ round(vehicles.matches(source=['other'])[1].market_value - vehicles.matches(source=['other'])[1].amount_owed,2) } 
+      - "assets_business_1_owner": ${ businesses[0].owner } 
+      - "assets_business_1_description": ${ businesses[0].display_name } 
+      - "assets_business_1_percent_owned": ${ businesses[0].percent_owned } 
+      - "assets_business_1_valuation_date": ${ format_date(businesses[0].valuation_date, format='M/d/yyyy')  } 
+      - "assets_business_1_market_value": ${ round(businesses[0].market_value,2) } 
+      - "assets_business_2_owner": ${ businesses[1].owner } 
+      - "assets_business_2_description": ${ businesses[1].display_name } 
+      - "assets_business_2_percent_owned": ${ businesses[1].percent_owned } 
+      - "assets_business_2_valuation_date": ${ format_date(businesses[1].valuation_date, format='M/d/yyyy')  } 
+      - "assets_business_2_market_value": ${ round(businesses[1].market_value,2) } 
+      - "assets_business_3_owner": ${ businesses[2].owner } 
+      - "assets_business_3_description": ${ businesses[2].display_name } 
+      - "assets_business_3_percent_owned": ${ businesses[2].percent_owned } 
+      - "assets_business_3_valuation_date": ${ format_date(businesses[2].valuation_date, format='M/d/yyyy')  } 
+      - "assets_business_3_market_value": ${ round(businesses[2].market_value,2) } 
+      - "assets_business_4_owner": ${ businesses[3].owner } 
+      - "assets_business_4_description": ${ businesses[3].display_name } 
+      - "assets_business_4_valuation_date": ${ format_date(businesses[3].valuation_date, format='M/d/yyyy')  } 
+      - "assets_business_4_market_value": ${ round(businesses[3].market_value,2) } 
+      - "assets_business_4_percent_owned": ${ businesses[3].percent_owned } 
+      - "assets_investment_1_owner": ${ investments[0].owner } 
+      - "assets_investment_1_type": ${ investments[0].display_name } 
+      - "assets_investment_1_description": ${ investments[0].description } 
+      - "assets_investment_1_shares": ${ investments[0].shares } 
+      - "assets_investment_1_market_value": ${ round(investments[0].market_value,2) } 
+      - "assets_investment_2_owner": ${ investments[1].owner } 
+      - "assets_investment_2_type": ${ investments[1].display_name } 
+      - "assets_investment_2_description": ${ investments[1].description } 
+      - "assets_investment_2_shares": ${ investments[1].shares } 
+      - "assets_investment_2_market_value": ${ round(investments[1].market_value,2) } 
+      - "assets_investment_3_owner": ${ investments[2].owner } 
+      - "assets_investment_3_type": ${ investments[2].display_name } 
+      - "assets_investment_3_description": ${ investments[2].description } 
+      - "assets_investment_3_shares": ${ investments[2].shares } 
+      - "assets_investment_3_market_value": ${ round(investments[2].market_value,2) } 
+      - "assets_investment_4_owner": ${ investments[3].owner } 
+      - "assets_investment_4_type": ${ investments[3].display_name } 
+      - "assets_investment_4_description": ${ investments[3].description } 
+      - "assets_investment_4_shares": ${ investments[3].shares } 
+      - "assets_investment_4_market_value": ${ round(investments[3].market_value,2) } 
+      - "assets_investment_5_": ${ investments[4].owner } 
+      - "assets_investment_5_type": ${ investments[4].display_name } 
+      - "assets_investment_5_description": ${ investments[4].description } 
+      - "assets_investment_5_shares": ${ investments[4].shares } 
+      - "assets_investment_5_market_value": ${ round(investments[4].market_value,2) } 
+      - "assets_investment_6_owner": ${ investments[5].owner } 
+      - "assets_investment_6_type": ${ investments[5].display_name } 
+      - "assets_investment_6_description": ${ investments[5].description } 
+      - "assets_investment_6_shares": ${ investments[5].shares } 
+      - "assets_investment_6_market_value": ${ round(investments[5].market_value,2) } 
+      - "assets_investment_7_owner": ${ investments[6].owner } 
+      - "assets_investment_7_type": ${ investments[6].display_name } 
+      - "assets_investment_7_description": ${ investments[6].description } 
+      - "assets_investment_7_shares": ${ investments[6].shares } 
+      - "assets_investment_7_market_value": ${ round(investments[6].market_value,2) } 
+      - "assets_bank_checking_accounts_1_owner": ${ bank_assets.matches(source=['checking account'])[0].owner } 
+      - "assets_bank_checking_accounts_1_bank": ${ bank_assets.matches(source=['checking account'])[0].bank } 
+      - "assets_bank_checking_accounts_1_balance": ${ round(bank_assets.matches(source=['checking account'])[0].balance,2) } 
+      - "assets_bank_checking_accounts_2_owner": ${ bank_assets.matches(source=['checking account'])[1].owner } 
+      - "assets_bank_checking_accounts_2_bank": ${ bank_assets.matches(source=['checking account'])[1].bank } 
+      - "assets_bank_checking_accounts_2_balance": ${ round(bank_assets.matches(source=['checking account'])[1].balance,2) } 
+      - "assets_bank_savings_accounts_1_owner": ${ bank_assets.matches(source=['savings account'])[0].owner } 
+      - "assets_bank_savings_accounts_1_bank": ${ bank_assets.matches(source=['savings account'])[0].bank } 
+      - "assets_bank_savings_accounts_1_balance": ${ round(bank_assets.matches(source=['savings account'])[0].balance,2) } 
+      - "assets_bank_savings_accounts_2_owner": ${ bank_assets.matches(source=['savings account'])[1].owner } 
+      - "assets_bank_savings_accounts_2_bank": ${ bank_assets.matches(source=['savings account'])[1].bank } 
+      - "assets_bank_savings_accounts_2_balance": ${ round(bank_assets.matches(source=['savings account'])[1].balance,2) } 
+      - "assets_bank_money_market_1_owner": ${ bank_assets.matches(source=['money_market'])[0].owner } 
+      - "assets_bank_money_market_1_bank": ${ bank_assets.matches(source=['money_market'])[0].bank } 
+      - "assets_bank_money_market_1_balance": ${ round(bank_assets.matches(source=['money_market'])[0].balance,2) } 
+      - "assets_bank_money_market_2_owner": ${ bank_assets.matches(source=['money_market'])[1].owner } 
+      - "assets_bank_money_market_2_bank": ${ bank_assets.matches(source=['money_market'])[1].bank } 
+      - "assets_bank_money_market_2_balance": ${ round(bank_assets.matches(source=['money_market'])[1].balance,2) } 
+      - "assets_bank_cash_owner": ${ bank_assets.matches(source=['cash on hand'])[0].owner } 
+      - "assets_bank_cash_bank": ${ bank_assets.matches(source=['cash on hand'])[0].bank } 
+      - "assets_bank_cash_balance": ${ round(bank_assets.matches(source=['cash on hand'])[0].balance,2) } 
+      - "assets_bank_college_owner": ${ bank_assets.matches(source=['college savings'])[0].owner } 
+      - "assets_bank_college_bank": ${ bank_assets.matches(source=['college savings'])[0].bank } 
+      - "assets_bank_college_balance": ${ round(bank_assets.matches(source=['college savings'])[0].balance,2) } 
+      - "assets_bank_hsa_owner": ${ bank_assets.matches(source=['health savings'])[0].owner } 
+      - "assets_bank_hsa_bank": ${ bank_assets.matches(source=['health savings'])[0].bank } 
+      - "assets_bank_hsa_balance": ${ round(bank_assets.matches(source=['health savings'])[0].balance,2) } 
+      - "assets_bank_other_owner": ${ bank_assets.matches(source=['other'])[0].owner } 
+      - "assets_bank_other_bank": ${ bank_assets.matches(source=['other'])[0].bank } 
+      - "assets_bank_other_balance": ${ round(bank_assets.matches(source=['other'])[0].balance,2) } 
+      - "assets_accounts_held_for_benefit_1_trustee": ${ accounts_held_for_benefit[0].trustee } 
+      - "assets_accounts_held_for_benefit_1_beneficiary": ${ accounts_held_for_benefit[0].beneficiary } 
+      - "assets_accounts_held_for_benefit_1_description": ${ accounts_held_for_benefit[0].description } 
+      - "assets_accounts_held_for_benefit_1_market_value": ${ round(accounts_held_for_benefit[0].market_value,2) } 
+      - "assets_accounts_held_for_benefit_2_trustee": ${ accounts_held_for_benefit[1].trustee } 
+      - "assets_accounts_held_for_benefit_2_beneficiary": ${ accounts_held_for_benefit[1].beneficiary } 
+      - "assets_accounts_held_for_benefit_2_description": ${ accounts_held_for_benefit[1].description } 
+      - "assets_accounts_held_for_benefit_2_market_value": ${ round(accounts_held_for_benefit[1].market_value,2) } 
+      - "assets_accounts_held_for_benefit_3_trustee": ${ accounts_held_for_benefit[2].trustee } 
+      - "assets_accounts_held_for_benefit_3_beneficiary": ${ accounts_held_for_benefit[2].beneficiary } 
+      - "assets_accounts_held_for_benefit_3_description": ${ accounts_held_for_benefit[2].description } 
+      - "assets_accounts_held_for_benefit_3_market_value": ${ round(accounts_held_for_benefit[2].market_value,2) } 
+      - "assets_insur_life_1_owner": ${ life_insurance[0].owner } 
+      - "assets_insur_life_1_beneficiary": ${ life_insurance[0].beneficiary } 
+      - "assets_insur_life_1_company": ${ life_insurance[0].company } 
+      - "assets_insur_life_1_face_value": ${ round(life_insurance[0].market_value,2) } 
+      - "assets_insur_life_1_amount_owed": ${ round(life_insurance[0].balance,2) } 
+      - "assets_insur_life_1_net_value": ${ round(life_insurance[0].market_value - life_insurance[0].balance,2) } 
+      - "assets_insur_life_2_owner": ${ life_insurance[1].owner } 
+      - "assets_insur_life_2_beneficiary": ${ life_insurance[1].beneficiary } 
+      - "assets_insur_life_2_company": ${ life_insurance[1].company } 
+      - "assets_insur_life_2_face_value": ${ round(life_insurance[1].market_value,2) } 
+      - "assets_insur_life_2_amount_owed": ${ round(life_insurance[1].balance,2) } 
+      - "assets_insur_life_2_net_value": ${ round(life_insurance[1].market_value - life_insurance[1].balance,2) } 
+      - "assets_insur_life_3_owner": ${ life_insurance[2].owner } 
+      - "assets_insur_life_3_beneficiary": ${ life_insurance[2].beneficiary } 
+      - "assets_insur_life_3_company": ${ life_insurance[2].company } 
+      - "assets_insur_life_3_face_value": ${ round(life_insurance[2].market_value,2) } 
+      - "assets_insur_life_3_amount_owed": ${ round(life_insurance[2].balance,2) } 
+      - "assets_insur_life_3_net_value": ${ round(life_insurance[2].market_value - life_insurance[2].balance,2) } 
+      - "assets_insur_life_4_owner": ${ life_insurance[3].owner } 
+      - "assets_insur_life_4_beneficiary": ${ life_insurance[3].beneficiary } 
+      - "assets_insur_life_4_company": ${ life_insurance[3].company } 
+      - "assets_insur_life_4_face_value": ${ round(life_insurance[3].market_value,2) } 
+      - "assets_insur_life_4_amount_owed": ${ round(life_insurance[3].balance,2) } 
+      - "assets_insur_life_4_net_value": ${ round(life_insurance[3].market_value - life_insurance[3].balance,2) } 
+      - "assets_insur_life_5_owner": ${ life_insurance[4].owner } 
+      - "assets_insur_life_5_beneficiary": ${ life_insurance[4].beneficiary } 
+      - "assets_insur_life_5_company": ${ life_insurance[4].company } 
+      - "assets_insur_life_5_face_value": ${ round(life_insurance[4].market_value,2) } 
+      - "assets_insur_life_5_amount_owed": ${ round(life_insurance[4].balance,2) } 
+      - "assets_insur_life_5_net_value": ${ round(life_insurance[4].market_value - life_insurance[4].balance,2) } 
+      - "assets_insur_life_6_owner": ${ life_insurance[5].owner } 
+      - "assets_insur_life_6_beneficiary": ${ life_insurance[5].beneficiary } 
+      - "assets_insur_life_6_company": ${ life_insurance[5].company } 
+      - "assets_insur_life_6_face_value": ${ round(life_insurance[5].market_value,2) } 
+      - "assets_insur_life_6_amount_owed": ${ round(life_insurance[5].balance,2) } 
+      - "assets_insur_life_6_net_value": ${ round(life_insurance[5].market_value - life_insurance[5].balance,2) } 
+      - "assets_retirement_ira_1_owner": ${ retirement_accounts.matches(source=['ira'])[0].owner } 
+      - "assets_retirement_ira_1_bank": ${ retirement_accounts.matches(source=['ira'])[0].bank } 
+      - "assets_retirement_ira_1_market_value": ${ round(retirement_accounts.matches(source=['ira'])[0].market_value,2) } 
+      - "assets_retirement_ira_2_owner": ${ retirement_accounts.matches(source=['ira'])[1].owner } 
+      - "assets_retirement_ira_2_bank": ${ retirement_accounts.matches(source=['ira'])[1].bank } 
+      - "assets_retirement_ira_2_net_value": ${ round(retirement_accounts.matches(source=['ira'])[1].market_value,2) } 
+      - "assets_retirement_401k_1_owner": ${ retirement_accounts.matches(source=['401k'])[0].owner } 
+      - "assets_retirement_401k_1_bank": ${ retirement_accounts.matches(source=['401k'])[0].bank } 
+      - "assets_retirement_401k_1_net_value": ${ round(retirement_accounts.matches(source=['401k'])[0].market_value,2) } 
+      - "assets_retirement_401k_2_owner": ${ retirement_accounts.matches(source=['401k'])[1].owner } 
+      - "assets_retirement_401k_2_bank": ${ retirement_accounts.matches(source=['401k'])[1].bank } 
+      - "assets_retirement_401k_2_net_value": ${ round(retirement_accounts.matches(source=['401k'])[1].market_value,2) } 
+      - "assets_retirement_403b_owner": ${ retirement_accounts.matches(source=['403b'])[0].owner } 
+      - "assets_retirement_403b_bank": ${ retirement_accounts.matches(source=['403b'])[0].bank } 
+      - "assets_retirement_403b_net_value": ${ round(retirement_accounts.matches(source=['403b'])[0].market_value,2) } 
+      - "assets_retirement_tiaacref_owner": ${ retirement_accounts.matches(source=['tiaacref'])[0].owner } 
+      - "assets_retirement_tiaacref_bank": ${ retirement_accounts.matches(source=['tiaacref'])[0].bank } 
+      - "assets_retirement_tiaacref_net_value": ${ round(retirement_accounts.matches(source=['tiaacref'])[0].market_value,2) } 
+      - "assets_retirement_keogh_owner": ${ retirement_accounts.matches(source=['keogh'])[0].owner } 
+      - "assets_retirement_keogh_bank": ${ retirement_accounts.matches(source=['keogh'])[0].bank } 
+      - "assets_retirement_keogh_net_value": ${ round(retirement_accounts.matches(source=['keogh'])[0].market_value,2) } 
+      - "assets_retirement_tdsp_owner": ${ retirement_accounts.matches(source=['tdsp'])[0].owner } 
+      - "assets_retirement_tdsp_bank": ${ retirement_accounts.matches(source=['tdsp'])[0].bank } 
+      - "assets_retirement_tdsp_net_value": ${ round(retirement_accounts.matches(source=['tdsp'])[0].market_value,2) } 
+      - "assets_retirement_tsa_owner": ${ retirement_accounts.matches(source=['tsa'])[0].owner } 
+      - "assets_retirement_tsa_bank": ${ retirement_accounts.matches(source=['tsa'])[0].bank } 
+      - "assets_retirement_tsa_net_value": ${ round(retirement_accounts.matches(source=['tsa'])[0].market_value,2) } 
+      - "assets_retirement_profitshare_owner": ${ retirement_accounts.matches(source=['profitshare'])[0].owner } 
+      - "assets_retirement_profitshare_bank": ${ retirement_accounts.matches(source=['profitshare'])[0].bank } 
+      - "assets_retirement_profitshare_net_value": ${ round(retirement_accounts.matches(source=['profitshare'])[0].market_value,2) } 
+      - "assets_retirement_ssp_owner": ${ retirement_accounts.matches(source=['ssp'])[0].owner } 
+      - "assets_retirement_ssp_bank": ${ retirement_accounts.matches(source=['ssp'])[0].bank } 
+      - "assets_retirement_ssp_net_value": ${ round(retirement_accounts.matches(source=['ssp'])[0].market_value,2) } 
+      - "assets_retirement_defcomp_owner": ${ retirement_accounts.matches(source=['defcomp'])[0].owner } 
+      - "assets_retirement_defcomp_bank": ${ retirement_accounts.matches(source=['defcomp'])[0].bank } 
+      - "assets_retirement_defcomp_net_value": ${ round(retirement_accounts.matches(source=['defcomp'])[0].market_value,2) } 
+      - "assets_retirement_other_1_owner": ${ retirement_accounts.matches(source=['other'])[0].owner } 
+      - "assets_retirement_other_1_bank": ${ retirement_accounts.matches(source=['other'])[0].bank } 
+      - "assets_retirement_other_1_net_value": ${ round(retirement_accounts.matches(source=['other'])[0].market_value,2) } 
+      - "assets_retirement_other_2_owner": ${ retirement_accounts.matches(source=['other'])[1].owner } 
+      - "assets_retirement_other_2_bank": ${ retirement_accounts.matches(source=['other'])[1].bank } 
+      - "assets_retirement_other_2_net_value": ${ round(retirement_accounts.matches(source=['other'])[1].market_value,2) } 
+      - "assets_pension_defined_ben_owner": ${ pensions.matches(source=['defined_ben'])[0].owner } 
+      - "assets_pension_defined_ben_administrator": ${ pensions.matches(source=['defined_ben'])[0].administrator } 
+      - "assets_pension_defined_ben_market_value": ${ round(pensions.matches(source=['defined_ben'])[0].market_value,2) } 
+      - "assets_pension_defined_cont_owner": ${ pensions.matches(source=['defined_cont'])[0].owner } 
+      - "assets_pension_defined_cont_administrator": ${ pensions.matches(source=['defined_cont'])[0].administrator } 
+      - "assets_pension_defined_cont_market_value": ${ round(pensions.matches(source=['defined_cont'])[0].market_value,2) } 
+      - "assets_pension_target_ben_owner": ${ pensions.matches(source=['target_ben'])[0].owner } 
+      - "assets_pension_target_ben_administrator": ${ pensions.matches(source=['target_ben'])[0].administrator } 
+      - "assets_pension_target_ben_market_value": ${ round(pensions.matches(source=['target_ben'])[0].market_value,2) } 
+      - "assets_pension_military_owner": ${ pensions.matches(source=['military'])[0].owner } 
+      - "assets_pension_military_administrator": ${ pensions.matches(source=['military'])[0].administrator } 
+      - "assets_pension_military_market_value": ${ round(pensions.matches(source=['military'])[0].market_value,2) } 
+      - "assets_pension_sep_owner": ${ pensions.matches(source=['sep'])[0].owner } 
+      - "assets_pension_sep_administrator": ${ pensions.matches(source=['sep'])[0].administrator } 
+      - "assets_pension_sep_market_value": ${ round(pensions.matches(source=['sep'])[0].market_value,2) } 
+
+---
